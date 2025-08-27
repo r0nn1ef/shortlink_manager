@@ -54,11 +54,9 @@ This module requires **Drupal core 10** or higher. It is a companion to the **UT
     drush en shortlink_manager
     ```
 
-4.  Ensure the companion **UTM Sets** module is also installed and enabled.
-
 ## Configuration
 
-The module's main configuration form is located at `/admin/config/content/shortlink-settings`.
+The module's main configuration form is located at `/admin/config/system/shortlink`.
 
 ### Main Settings
 
@@ -68,7 +66,7 @@ The module's main configuration form is located at `/admin/config/content/shortl
 
 ### Auto-Generation
 
-Navigate to `/admin/config/content/shortlink-auto-generate` to configure which content types and bundles should automatically generate shortlinks upon creation. You can also specify a default UTM Set to be applied.
+Navigate to `/admin/config/system/shortlink/auto-generate` to configure which content types and bundles should automatically generate shortlinks upon creation. You can also specify a default UTM Set to be applied.
 
 ## Usage
 

@@ -82,6 +82,6 @@ The `shortlink` content entity stores a record for every shortlink created. For 
 
 ## Maintainers
 
-* **John Doe** (john.doe@example.com) - Initial creator and maintainer.
+* **Ron Ferguson** (r0nn1ef@drupalodyssey.com) - Initial creator and maintainer.
 
 Feel free to open an issue or pull request if you find a bug or have a suggestion for a new feature.

@@ -1,0 +1,4 @@
+path_prefix: go
+redirect_status: 301
+available_entity_types: {}
+auto_generate_settings: {}

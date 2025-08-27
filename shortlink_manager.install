@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Shortlink Manager module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_schema().
+ *
+ * Only define tables that are not generated from entity baseFieldDefinitions().
+ */
+function shortlink_manager_schema(): array {
+  $schema = [];
+
+  // Only define custom/non-entity tables here.
+  $schema['shortlink_revision'] = [
+    'description' => 'The revision table for shortlink entities.',
+    'fields' => [
+      'id' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The Shortlink ID.',
+      ],
+      'revision_id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'The revision ID.',
+      ],
+      'langcode' => [
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => 'en',
+        'description' => 'The shortlink language code.',
+      ],
+    ],
+    'primary key' => ['revision_id'],
+    'indexes' => [
+      'id' => ['id'],
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Update shortlink base table to include missing core entity fields.
+ */
+function shortlink_manager_update_10501() {
+  $schema = \Drupal::database()->schema();
+
+  // UUID column.
+  if (!$schema->fieldExists('shortlink', 'uuid')) {
+    $schema->addField('shortlink', 'uuid', [
+      'type' => 'varchar',
+      'length' => 128,
+      'not null' => FALSE,
+      'description' => 'The UUID of the Shortlink entity.',
+    ]);
+  }
+
+  // Language code column.
+  if (!$schema->fieldExists('shortlink', 'langcode')) {
+    $schema->addField('shortlink', 'langcode', [
+      'type' => 'varchar',
+      'length' => 12,
+      'not null' => FALSE,
+      'description' => 'The language code.',
+    ]);
+  }
+
+  // Created timestamp column.
+  if (!$schema->fieldExists('shortlink', 'created')) {
+    $schema->addField('shortlink', 'created', [
+      'type' => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'The time that the shortlink was created.',
+    ]);
+  }
+
+  // Changed timestamp column.
+  if (!$schema->fieldExists('shortlink', 'changed')) {
+    $schema->addField('shortlink', 'changed', [
+      'type' => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'The time that the shortlink was last edited.',
+    ]);
+  }
+}

@@ -1,0 +1,26 @@
+administer shortlink:
+  title: 'Administer shortlinks'
+  description: 'Grant full access to create, edit, and delete any shortlink.'
+  restrict access: true
+administer utm set:
+  title: 'Administer UTM set'
+  description: 'Grant full access to create, edit, and delete any UTM set.'
+  restrict access: true
+create shortlink:
+  title: 'Create new shortlinks'
+view shortlink:
+  title: 'View any shortlink'
+  description: 'View individual shortlink entities.'
+view shortlink block:
+  title: 'View shortlink block'
+  description: 'Allows roles to see the shortlink block on pages where it is placed.'
+edit any shortlink:
+  title: 'Edit any shortlink'
+  description: 'Allows roles to edit any existing shortlink.'
+delete any shortlink:
+  title: 'Delete any shortlink'
+  description: 'Allows roles to delete any existing shortlink.'
+use shortlink:
+  title: 'Use shortlinks'
+  description: 'Allows roles to access shortlinks for redirection.'
+  default: true

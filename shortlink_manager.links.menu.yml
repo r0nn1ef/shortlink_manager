@@ -1,0 +1,25 @@
+entity.shortlink.overview:
+  title: Shortlinks
+  parent: system.admin_content
+  description: 'List of shortlinks to extend site functionality.'
+  route_name: entity.shortlink.collection
+
+entity.utm_set.overview:
+  title: UTM Sets
+  parent: system.admin_structure
+  description: 'List of utm sets to extend site functionality.'
+  route_name: entity.utm_set.collection
+
+shortlink_manager.settings:
+  title: Shortlink Settings
+  route_name: shortlink_manager.settings
+  description: 'Shortlink module configuration.'
+  parent: system.admin_config_system
+  weight: 10
+
+shortlink_manager.shortlink_auto_generate:
+  title: Shortlink Auto Generate
+  route_name: shortlink_manager.shortlink_auto_generate
+  description: 'Select entity types/bundles that will automatically have shortlinks generated.'
+  parent: shortlink_manager.settings
+  weight: 10

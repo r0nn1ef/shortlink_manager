@@ -1,0 +1,152 @@
+<?php
+
+/**
+ * @file
+ * Shortlink Manager module file.
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\ContentEntityBase;
+use Drupal\shortlink_manager\Entity\Shortlink;
+
+/**
+ * Implements hook_entity_insert().
+ */
+function shortlink_manager_entity_insert(EntityInterface $entity): void {
+  // Only operate on content entities.
+  if (!($entity instanceof ContentEntityBase)) {
+    \Drupal::logger('shortlink_manager')->notice('Entity is not instance of ContentEntityBase.');
+    return;
+  }
+
+  /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlinkManager */
+  $shortlinkManager = \Drupal::service('shortlink_manager.shortlink_manager');
+  $config = \Drupal::config('shortlink_manager.settings');
+  $entity_type_id = $entity->getEntityTypeId();
+  $bundle_id = $entity->bundle();
+
+  // Check if autogeneration is enabled for this entity type and bundle.
+  $enabled = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.enabled');
+  if (!$enabled) {
+    return;
+  }
+
+  // Get the UTM set IDs from the configuration.
+  $utm_set_ids = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.utm_set');
+
+  // If multiple UTM sets are configured, create a new shortlink for each.
+  foreach ($utm_set_ids as $utm_set_id) {
+    $shortlink = new Shortlink([], 'shortlink');
+    $shortlink->set('label', t('Auto-generated for @label', ['@label' => $entity->label()]));
+    $shortlink->set('path', $shortlinkManager->generateShortlinkPath());
+    $shortlink->set('target_entity_type', $entity->getEntityTypeId());
+    $shortlink->set('target_entity_id', $entity->id());
+    $shortlink->set('description', t('Auto-generated from @bundle create', ['@bundle' => $entity->getEntityType()->getBundleLabel($bundle_id)]));
+    $shortlink->set('status', TRUE);
+    $shortlink->set('utm_set', $utm_set_id);
+
+    try {
+      $shortlink->save();
+      // Add a status message for each created shortlink.
+      \Drupal::messenger()->addStatus(t('A shortlink was automatically generated for this @bundle_label with UTM set: @utm_set_id.', [
+        '@bundle_label' => $entity->getEntityType()->getBundleLabel($bundle_id),
+        '@utm_set_id' => $utm_set_id,
+      ]));
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('shortlink_manager')->error('Failed to create shortlink for entity %label (%type:%id) with UTM set %utm_set_id.', [
+        '%label' => $entity->label(),
+        '%type' => $entity->getEntityTypeId(),
+        '%id' => $entity->id(),
+        '%utm_set_id' => $utm_set_id,
+      ]);
+    }
+  }
+
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function shortlink_manager_entity_update(EntityInterface $entity): void {
+  // Only operate on content entities.
+  if (!($entity instanceof ContentEntityBase)) {
+    \Drupal::logger('shortlink_manager')->notice('Entity is not instance of ContentEntityBase.');
+    return;
+  }
+
+  // Load the shortlink_manager settings.
+  $config = \Drupal::config('shortlink_manager.settings');
+  $entity_type_id = $entity->getEntityTypeId();
+  $bundle_id = $entity->bundle();
+
+  // Check if autogeneration is enabled for this entity type and bundle.
+  $enabled = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.enabled');
+  if (!$enabled) {
+    // If autogeneration is not enabled, we don't need to do anything.
+    return;
+  }
+
+  // Get the new UTM set IDs from the configuration.
+  $new_utm_set_ids = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.utm_set');
+
+  $shortlinkStorage = \Drupal::entityTypeManager()->getStorage('shortlink');
+
+  // Find all existing shortlinks associated with this entity.
+  $existing_shortlinks = $shortlinkStorage->loadByProperties([
+    'target_entity_type' => $entity_type_id,
+    'target_entity_id' => $entity->id(),
+  ]);
+
+  $existing_utm_set_ids = [];
+  foreach ($existing_shortlinks as $shortlink) {
+    if ($shortlink->hasField('utm_set') && $utm_set = $shortlink->get('utm_set')->entity) {
+      $existing_utm_set_ids[] = $utm_set->id();
+    }
+  }
+
+  // Determine shortlinks to create and to delete.
+  $utm_sets_to_create = array_diff($new_utm_set_ids, $existing_utm_set_ids);
+  $shortlinks_to_delete = array_filter($existing_shortlinks, function ($shortlink) use ($new_utm_set_ids) {
+    if ($shortlink->hasField('utm_set') && $utm_set = $shortlink->get('utm_set')->entity) {
+      return !in_array($utm_set->id(), $new_utm_set_ids);
+    }
+    return TRUE;
+  });
+
+  // Delete shortlinks that are no longer needed.
+  if (!empty($shortlinks_to_delete)) {
+    $shortlinkStorage->delete($shortlinks_to_delete);
+  }
+
+  // Create new shortlinks for new UTM sets.
+  /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlinkManager */
+  $shortlinkManager = \Drupal::service('shortlink_manager.shortlink_manager');
+  foreach ($utm_sets_to_create as $utm_set_id) {
+    $shortlink = new Shortlink([], 'shortlink');
+    $shortlink->set('label', t('Auto-generated for @label', ['@label' => $entity->label()]));
+    $shortlink->set('path', $shortlinkManager->generateShortlinkPath());
+    $shortlink->set('target_entity_type', $entity->getEntityTypeId());
+    $shortlink->set('target_entity_id', $entity->id());
+    $shortlink->set('description', t('Auto-generated from @bundle create', ['@bundle' => $entity->getEntityType()->getBundleLabel($bundle_id)]));
+    $shortlink->set('status', TRUE);
+    $shortlink->set('utm_set', $utm_set_id);
+
+    try {
+      $shortlink->save();
+      // Add a status message for each created shortlink.
+      \Drupal::messenger()->addStatus(t('A new shortlink was generated for @bundle_label with UTM set: @utm_set_id.', [
+        '@bundle_label' => $entity->getEntityType()->getBundleLabel($bundle_id),
+        '@utm_set_id' => $utm_set_id,
+      ]));
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('shortlink_manager')->error('Failed to create shortlink for entity %label (%type:%id) with UTM set %utm_set_id.', [
+        '%label' => $entity->label(),
+        '%type' => $entity->getEntityTypeId(),
+        '%id' => $entity->id(),
+        '%utm_set_id' => $utm_set_id,
+      ]);
+    }
+  }
+}

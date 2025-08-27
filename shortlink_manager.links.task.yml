@@ -1,0 +1,17 @@
+entity.shortlink.collection:
+  route_name: 'entity.shortlink.collection'
+  title: 'Shortlinks'
+  base_route: system.admin_content
+  weight: 20
+
+shortlink_manager.settings:
+  route_name: shortlink_manager.settings
+  title: 'Settings'
+  base_route: shortlink_manager.settings
+
+
+shortlink_manager.shortlink_auto_generate:
+  route_name: shortlink_manager.shortlink_auto_generate
+  title: 'Auto Generate'
+  base_route: shortlink_manager.settings
+

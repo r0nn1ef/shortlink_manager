@@ -1,0 +1,12 @@
+services:
+  # The ShortlinkManager service that contains core logic.
+  shortlink_manager.shortlink_manager:
+    class: Drupal\shortlink_manager\ShortlinkManager
+    arguments:
+      - '@config.factory'
+      - '@entity_type.manager'
+  shortlink_manager.route_subscriber:
+    class: Drupal\shortlink_manager\Routing\ShortlinkRouteSubscriber
+    arguments: [ '@config.factory' ]
+    tags:
+      - { name: event_subscriber }

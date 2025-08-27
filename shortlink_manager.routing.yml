@@ -1,0 +1,90 @@
+entity.shortlink.collection:
+  path: '/admin/content/shortlink'
+  defaults:
+    _entity_list: 'shortlink'
+    _title: 'Shortlink configuration'
+  requirements:
+    _permission: 'administer shortlink'
+
+entity.shortlink.add_form:
+  path: '/admin/content/shortlink/add'
+  defaults:
+    _entity_form: 'shortlink.add'
+    _title: 'Add a shortlink'
+  requirements:
+    _permission: 'administer shortlink'
+
+entity.shortlink.edit_form:
+  path: '/admin/content/shortlink/{shortlink}'
+  defaults:
+    _entity_form: 'shortlink.edit'
+    _title: 'Edit a shortlink'
+  requirements:
+    _permission: 'administer shortlink'
+
+entity.shortlink.delete_form:
+  path: '/admin/content/shortlink/{shortlink}/delete'
+  defaults:
+    _entity_form: 'shortlink.delete'
+    _title: 'Delete a shortlink'
+  requirements:
+    _permission: 'administer shortlink'
+
+entity.utm_set.collection:
+  path: '/admin/structure/utm-set'
+  defaults:
+    _entity_list: 'utm_set'
+    _title: 'UTM Set configuration'
+  requirements:
+    _permission: 'administer utm_set'
+
+entity.utm_set.add_form:
+  path: '/admin/structure/utm_set/add'
+  defaults:
+    _entity_form: 'utm_set.add'
+    _title: 'Add an UTM Set'
+  requirements:
+    _permission: 'administer utm_set'
+
+entity.utm_set.edit_form:
+  path: '/admin/structure/utm-set/{utm_set}'
+  defaults:
+    _entity_form: 'utm_set.edit'
+    _title: 'Edit an UTM Set'
+  requirements:
+    _permission: 'administer utm_set'
+
+entity.utm_set.delete_form:
+  path: '/admin/structure/utm-set/{utm_set}/delete'
+  defaults:
+    _entity_form: 'utm_set.delete'
+    _title: 'Delete an UTM Set'
+  requirements:
+    _permission: 'administer utm_set'
+
+shortlink_manager.settings:
+  path: '/admin/config/system/shortlink'
+  defaults:
+    _title: 'Shortlink settings'
+    _form: 'Drupal\shortlink_manager\Form\ShortlinkSettingsForm'
+  requirements:
+    _permission: 'administer shortlink'
+
+shortlink_manager.shortlink_auto_generate:
+  path: '/admin/config/system/shortlink/auto-generate'
+  defaults:
+    _title: 'Shortlink auto generate'
+    _form: 'Drupal\shortlink_manager\Form\ShortlinkAutoGenerateForm'
+  requirements:
+    _permission: 'administer shortlink'
+
+shortlink_manager.redirect:
+  path: ''
+  defaults:
+    _title: 'Shortlink manager redirect'
+    _controller: '\Drupal\shortlink_manager\Controller\ShortlinkRedirectController::redirectShortlink'
+  requirements:
+    _access: 'TRUE'
+    slug: '[a-zA-Z0-9_-]+'
+  options:
+    no_cache: TRUE

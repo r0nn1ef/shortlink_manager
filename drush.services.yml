@@ -1,0 +1,6 @@
+services:
+  shortlink_manager.shortlink_commands:
+    class: Drupal\shortlink_manager\Commands\ShortlinkCommands
+    tags:
+      - { name: drush.command }
+    arguments: ['@config.factory', '@entity_type.manager', '@messenger', '@shortlink_manager.shortlink_manager']

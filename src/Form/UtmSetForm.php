@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Drupal\shortlink_manager\Form;
+
+use Drupal\Core\Entity\EntityForm;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Form handler for the UTM Set add/edit forms.
+ */
+final class UtmSetForm extends EntityForm {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function form(array $form, FormStateInterface $form_state): array {
+    $utm_set = $this->entity;
+
+    $form['label'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Label'),
+      '#maxlength' => 255,
+      '#default_value' => $utm_set->label(),
+      '#description' => $this->t('Name of the UTM Set.'),
+      '#required' => TRUE,
+    ];
+
+    $form['id'] = [
+      '#type' => 'machine_name',
+      '#default_value' => $utm_set->id(),
+      '#machine_name' => [
+        'exists' => ['\Drupal\shortlink_manager\Entity\UtmSet', 'load'],
+      ],
+      '#disabled' => !$utm_set->isNew(),
+    ];
+
+    $form['description'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Description'),
+      '#default_value' => $utm_set->get('description'),
+      '#description' => $this->t('Optional description for administrative use.'),
+      '#required' => TRUE,
+    ];
+
+    $form['utm_fields'] = [
+      '#type' => 'details',
+      '#title' => $this->t('UTM Parameters'),
+      '#open' => TRUE,
+      '#tree' => FALSE,
+    ];
+
+    $form['utm_fields']['utm_source'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('UTM Source'),
+      '#default_value' => $utm_set->getUtmSource(),
+      '#description' => $this->t('Campaign source (e.g., newsletter, facebook).'),
+      '#required' => TRUE,
+    ];
+
+    $form['utm_fields']['utm_medium'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('UTM Medium'),
+      '#default_value' => $utm_set->getUtmMedium(),
+      '#description' => $this->t('Campaign medium (e.g., email, cpc, banner).'),
+      '#required' => TRUE,
+    ];
+
+    $form['utm_fields']['utm_campaign'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('UTM Campaign'),
+      '#default_value' => $utm_set->getUtmCampaign(),
+      '#description' => $this->t('Campaign name (e.g., summer_sale).'),
+      '#required' => TRUE,
+    ];
+
+    $form['utm_fields']['utm_term'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('UTM Term'),
+      '#default_value' => $utm_set->getUtmTerm(),
+      '#description' => $this->t('Campaign term for paid keywords (optional).'),
+    ];
+
+    $form['utm_fields']['utm_content'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('UTM Content'),
+      '#default_value' => $utm_set->getUtmContent(),
+      '#description' => $this->t('Campaign content for A/B testing or distinguishing ads.'),
+    ];
+
+    $form['status'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enabled'),
+      '#default_value' => $utm_set->getStatus(),
+      '#description' => $this->t('If unchecked, this UTM Set will not be used in automatic generation.'),
+      '#weight' => 100,
+    ];
+
+    return parent::form($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function save(array $form, FormStateInterface $form_state): void {
+    /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
+    $utm_set = $this->entity;
+    $utm_set->save();
+
+    $this->messenger()->addStatus($this->t('Saved the %label UTM Set.', [
+      '%label' => $utm_set->label(),
+    ]));
+
+    $form_state->setRedirectUrl($utm_set->toUrl('collection'));
+  }
+
+}

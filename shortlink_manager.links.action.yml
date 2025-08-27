@@ -1,0 +1,11 @@
+entity.shortlink.add_form:
+  route_name: 'entity.shortlink.add_form'
+  title: 'Add shortlink'
+  appears_on:
+    - entity.shortlink.collection
+
+entity.utm_set.add_form:
+  route_name: 'entity.utm_set.add_form'
+  title: 'Add utm set'
+  appears_on:
+    - entity.utm_set.collection

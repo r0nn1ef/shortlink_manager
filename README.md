@@ -22,7 +22,7 @@ This module is designed for developers and site builders who need a robust, flex
 
 ## Requirements
 
-This module requires **Drupal core 10** or higher. It is a companion to the **UTM Sets** module, which provides the `utm_set` entity.
+This module requires **Drupal core 10** or higher.
 
 ## Installation
 

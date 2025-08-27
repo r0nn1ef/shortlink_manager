@@ -47,6 +47,17 @@ function shortlink_manager_schema(): array {
 }
 
 /**
+ * Implements hook_uninstall().
+ */
+function shortlink_manager_uninstall($is_syncing) {
+  $entity_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type = $entity_update_manager->getEntityType('shortlink');
+  if ($entity_type) {
+    $entity_update_manager->uninstallEntityType($entity_type);
+  }
+}
+
+/**
  * Update shortlink base table to include missing core entity fields.
  */
 function shortlink_manager_update_10501() {

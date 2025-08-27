@@ -1,5 +1,5 @@
 {
-  "name": "drupal/shortlink_manager",
+  "name": "r0nn1ef/shortlink_manager",
   "description": "A Drupal 10 module to manage and display shortlinks for content on your site.",
   "type": "drupal-module",
   "homepage": "https://github.com/r0nn1ef/shortlink_manager.git",

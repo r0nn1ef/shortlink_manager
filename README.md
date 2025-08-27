@@ -44,7 +44,7 @@ This module requires **Drupal core 10** or higher. It is a companion to the **UT
     After adding the repository, you can require the module using the standard Composer command:
 
     ```bash
-    composer require your-github-username/shortlink_manager:^1.0
+    composer require r0nn1ef/shortlink_manager:^1.0
     ```
 
 3.  **Enable the module.**

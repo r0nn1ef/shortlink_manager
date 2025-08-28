@@ -34,7 +34,7 @@ This module requires **Drupal core 10** or higher.
     "repositories": [
         {
             "type": "git",
-            "url": "[https://github.com/r0nn1ef/shortlink_manager.git](https://github.com/r0nn1ef/shortlink_manager.git)"
+            "url": "https://github.com/r0nn1ef/shortlink_manager.git"
         }
     ]
     ```

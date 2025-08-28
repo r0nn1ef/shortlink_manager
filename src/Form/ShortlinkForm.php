@@ -57,9 +57,9 @@ final class ShortlinkForm extends ContentEntityForm {
     parent::validateForm($form, $form_state);
 
     // The form values are now nested inside the 'target' key.
-    $target_entity_type = $form_state->getValue('target_entity_type');
-    $target_entity_id = $form_state->getValue(['target', 'target_entity_id']);
-    $destination_override = $form_state->getValue(['target', 'destination_override']);
+    $target_entity_type = $form_state->getValue('target_entity_type')[0]['value'];
+    $target_entity_id = $form_state->getValue('target_entity_id')[0]['value'];
+    $destination_override = $form_state->getValue('destination_override')[0]['value'];
 
     /*
      * Ensure that either a target entity or a destination override is set, but
@@ -86,6 +86,9 @@ final class ShortlinkForm extends ContentEntityForm {
           '%id' => $target_entity_id,
         ]));
       }
+    }
+    else {
+      // The destination override is set so let it go.
     }
   }
 

@@ -126,7 +126,6 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       ->execute();
 
     if (empty($shortlink_ids)) {
-      die('HERE');
       $entity = NULL;
 
       // Check for a canonical entity route parameter.
@@ -173,14 +172,10 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
          * we will skip adding the link. External URL's we will assume are always
          * valid and show the shortlink regardless.
          */
-        if ( strpos($path, '/') === 1) {
-          if (!$this->pathValidator->isValid($path)) {
-            continue;
-          }
-          $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
-        } else {
-          $shortlink_url = Url::fromUserInput($shortlink->getPath(), ['absolute' => TRUE]);
+        if ( strpos($path, '/') === 1 && !$this->pathValidator->isValid($path)) {
+          continue;
         }
+        $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
       } else {
         $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
       }
@@ -201,6 +196,10 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       $tags = $entity->getCacheTags();
     } else {
       $tags = [];
+    }
+
+    if ( empty($items) ) {
+      return [];
     }
 
     $build = [

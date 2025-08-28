@@ -99,7 +99,7 @@ final class ShortlinkRedirectController extends ControllerBase {
        * If the destination override begins with "/", it is considered internal
        * to this site. Otherwise, it is considered an external URL.
        */
-      if ( strpos($destination_url_string, '/') === 1 ) {
+      if ( strpos($destination_url_string, '/') === 0 ) {
         $destination_url = Url::fromUserInput($destination_url_string, ['absolute' => TRUE]);
       } else {
         $destination_url = Url::fromUri($destination_url_string, ['absolute' => TRUE]);

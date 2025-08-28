@@ -12,7 +12,9 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Routing\CurrentRouteMatch;
+use Drupal\Core\Path\PathValidatorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Provides a block to display shortlinks for the current page.
@@ -47,6 +49,16 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
   protected CurrentRouteMatch $routeMatch;
 
   /**
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
+  /**
+   * @var \Drupal\Core\Path\PathValidatorInterface;
+   */
+  protected $pathValidator;
+
+  /**
    * Constructs a new ShortlinkBlock instance.
    *
    * @param array $configuration
@@ -61,12 +73,16 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
    *   The current user.
    * @param \Drupal\Core\Routing\CurrentRouteMatch $routeMatch
    *   The current route match.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $requestStack
+   *   The requestStack for this request.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, AccountInterface $current_user, CurrentRouteMatch $routeMatch) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, AccountInterface $current_user, CurrentRouteMatch $routeMatch, RequestStack $requestStack, PathValidatorInterface $path_validator) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->entityTypeManager = $entity_type_manager;
     $this->currentUser = $current_user;
     $this->routeMatch = $routeMatch;
+    $this->requestStack = $requestStack;
+    $this->pathValidator = $path_validator;
   }
 
   /**
@@ -80,6 +96,8 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       $container->get('entity_type.manager'),
       $container->get('current_user'),
       $container->get('current_route_match'),
+      $container->get('request_stack'),
+      $container->get('path.validator'),
     );
   }
 
@@ -93,33 +111,47 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       return [];
     }
 
-    $entity = NULL;
-
-    // Check for a canonical entity route parameter.
-    foreach ($this->routeMatch->getParameters()->all() as $param) {
-      if ($param instanceof EntityInterface) {
-        $entity = $param;
-        break;
-      }
-    }
-
-    if (!$entity) {
-      // No entity found on the current page, so don't show the block.
-      return [];
-    }
-
-    // Get the entity type ID and entity ID.
-    $entity_type_id = $entity->getEntityTypeId();
-    $entity_id = $entity->id();
-
-    // Query for shortlink entities that point to this entity.
     $shortlink_storage = $this->entityTypeManager->getStorage('shortlink');
+
+    $request = $this->requestStack->getCurrentRequest();
+
+    // Get the path without the query string.
+    $path = $request->getPathInfo();
+
+    // Get the Shortlink that has a destination_override that matches $path.
     $shortlink_ids = $shortlink_storage->getQuery()
-      ->condition('target_entity_type', $entity_type_id)
-      ->condition('target_entity_id', $entity_id)
+      ->condition('destination_override', $path)
       ->condition('status', TRUE)
       ->accessCheck(FALSE)
       ->execute();
+
+    if (empty($shortlink_ids)) {
+      die('HERE');
+      $entity = NULL;
+
+      // Check for a canonical entity route parameter.
+      foreach ($this->routeMatch->getParameters()->all() as $param) {
+        if ($param instanceof EntityInterface) {
+          $entity = $param;
+          break;
+        }
+      }
+
+      if (!is_null($entity)) {
+        // Get the entity type ID and entity ID.
+        $entity_type_id = $entity->getEntityTypeId();
+        $entity_id = $entity->id();
+
+        // Query for shortlink entities that point to this entity.
+
+        $shortlink_ids = $shortlink_storage->getQuery()
+          ->condition('target_entity_type', $entity_type_id)
+          ->condition('target_entity_id', $entity_id)
+          ->condition('status', TRUE)
+          ->accessCheck(FALSE)
+          ->execute();
+      }
+    }
 
     if (empty($shortlink_ids)) {
       // No shortlinks found for this entity.
@@ -128,22 +160,56 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
 
     $shortlinks = $shortlink_storage->loadMultiple($shortlink_ids);
 
-    $build = [
-      '#theme' => 'item_list',
-      '#items' => [],
-      '#cache' => [
-        'tags' => $entity->getCacheTags(),
-      ],
-    ];
+    $items = [];
 
     /** @var \Drupal\shortlink_manager\Entity\Shortlink $shortlink */
     foreach ($shortlinks as $shortlink) {
-      $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
+      if (!empty($shortlink->getDestinationOverride())) {
+        \Drupal::logger('shortlink')->debug('<pre>@data</pre>', ['@data' => $shortlink->getDestinationOverride()]);
+        $path = $shortlink->getDestinationOverride();
+        /*
+         * If the destination override begins with "/", this is considered local
+         * to this site so we'll try to validate the path. If it does not validate
+         * we will skip adding the link. External URL's we will assume are always
+         * valid and show the shortlink regardless.
+         */
+        if ( strpos($path, '/') === 1) {
+          if (!$this->pathValidator->isValid($path)) {
+            continue;
+          }
+          $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
+        } else {
+          $shortlink_url = Url::fromUserInput($shortlink->getPath(), ['absolute' => TRUE]);
+        }
+      } else {
+        $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
+      }
+
       $path = $shortlink->getPath();
       $utm_set = $shortlink->getUtmSet();
 
-      $build['#items'][] = Link::fromTextAndUrl($utm_set->label() . ': ' . $path, $shortlink_url);
+      if( !is_null($utm_set)) {
+        $label = $utm_set->label();
+      } else {
+        $label = $this->t('General link');
+      }
+
+      $items[] = Link::fromTextAndUrl($label . ': ' . $path, $shortlink_url);
     }
+
+    if ( !empty($entity) ) {
+      $tags = $entity->getCacheTags();
+    } else {
+      $tags = [];
+    }
+
+    $build = [
+      '#theme' => 'item_list',
+      '#items' => $items,
+      '#cache' => [
+        'tags' => $tags,
+      ],
+    ];
 
     return $build;
   }

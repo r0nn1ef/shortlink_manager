@@ -8,6 +8,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
+use Drupal\Core\Routing\TrustedRedirectResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -91,12 +92,18 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
-    $destination_url_string = '';
-
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {
       $destination_url_string = $shortlink->getDestinationOverride();
-      $destination_url = Url::fromUserInput($destination_url_string, ['absolute' => TRUE]);
+      /*
+       * If the destination override begins with "/", it is considered internal
+       * to this site. Otherwise, it is considered an external URL.
+       */
+      if ( strpos($destination_url_string, '/') === 1 ) {
+        $destination_url = Url::fromUserInput($destination_url_string, ['absolute' => TRUE]);
+      } else {
+        $destination_url = Url::fromUri($destination_url_string, ['absolute' => TRUE]);
+      }
     }
     else {
       // Otherwise, load the destination entity.
@@ -143,7 +150,11 @@ final class ShortlinkRedirectController extends ControllerBase {
 
     $redirect_status = $config->get('redirect_status') ?: 301;
 
-    return new RedirectResponse($destination_url->toString(), (int) $redirect_status);
+    if ( $destination_url->isExternal() ) {
+      return new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
+    } else {
+      return new RedirectResponse($destination_url->toString(), (int) $redirect_status);
+    }
   }
 
 }

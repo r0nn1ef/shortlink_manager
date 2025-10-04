@@ -1,50 +1,33 @@
 {#
 /**
  * @file
- * Custom template for the shortlink block content with copy functionality.
+ * Default template for the shortlink block content.
  *
  * Available variables:
  * - shortlinks: An array of Shortlink entity objects.
  * - entity: The target EntityInterface object (if a canonical route was matched).
+ * - current_path: The current path info string.
  */
 #}
+{% set home = url('<front>') %}
 {% if shortlinks %}
     <div class="shortlinks-wrapper">
         <h3 class="shortlinks-title">{{ 'Shortlinks'|t }}</h3>
         <ul class="shortlinks-list">
             {% for shortlink in shortlinks %}
-                {# Load the UTM Set entity from the shortlink field if it exists #}
                 {% set utm_set = shortlink.utm_set.entity %}
 
-                {# Get the raw path property. This is the short path, e.g., /go/xyz #}
                 {% set path = shortlink.path.value %}
 
-                {# Determine the display label #}
-                {% set label = utm_set ? utm_set.label : 'General Link'|t %}
+                {% set label = (utm_set ? utm_set.label() : 'General Link'|t)|render|trim %}
 
-                {# Get the absolute URL for the shortlink path. This is the full URL that needs to be copied. #}
-                {% set shortlink_url = url('internal:/' ~ path, {'absolute': true}) %}
+                {% set shortlink_url = home['#markup'] ~ path %}
 
-                <li class="shortlink-item" id="shortlink-item-{{ shortlink.id }}">
-
-                    {#
-                    1. The button now holds the clipboard icon.
-                    2. The full shortlink URL is stored in the data-link attribute.
-                    #}
-                    <button
-                            class="shortlink-copy-button"
-                            data-shortlink-url="{{ shortlink_url }}"
-                            title="{{ 'Copy ' ~ label ~ ' link to clipboard'|t }}"
-                    >
-                        {# Font Awesome Clipboard Icon #}
-                        <i class="fa-solid fa-clipboard" aria-hidden="true"></i>
-                    </button>
-
-                    {#
-                    The visible label for the user. We remove the path display here.
-                    #}
+                <li class="shortlink-item">
                     <span class="shortlink-label">{{ label }}</span>
-
+                    <span class="shortlink-separator">:</span>
+                    {# Link to the shortlink URL #}
+                    <a href="{{ shortlink_url }}">{{ path }}</a>
                 </li>
             {% endfor %}
         </ul>

@@ -215,7 +215,10 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
     return $build;
   }
 
-  public function getCacheContexts() {
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts(): array {
     return Cache::mergeContexts(parent::getCacheContexts(), ['url.path']);
   }
 

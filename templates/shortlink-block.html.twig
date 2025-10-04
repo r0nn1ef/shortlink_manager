@@ -1,0 +1,35 @@
+{#
+/**
+ * @file
+ * Default template for the shortlink block content.
+ *
+ * Available variables:
+ * - shortlinks: An array of Shortlink entity objects.
+ * - entity: The target EntityInterface object (if a canonical route was matched).
+ * - current_path: The current path info string.
+ */
+#}
+{% set home = url('<front>') %}
+{% if shortlinks %}
+    <div class="shortlinks-wrapper">
+        <h3 class="shortlinks-title">{{ 'Shortlinks'|t }}</h3>
+        <ul class="shortlinks-list">
+            {% for shortlink in shortlinks %}
+                {% set utm_set = shortlink.utm_set.entity %}
+
+                {% set path = shortlink.path.value %}
+
+                {% set label = (utm_set ? utm_set.label() : 'General Link'|t)|render|trim %}
+
+                {% set shortlink_url = home['#markup'] ~ path %}
+
+                <li class="shortlink-item">
+                    <span class="shortlink-label">{{ label }}</span>
+                    <span class="shortlink-separator">:</span>
+                    {# Link to the shortlink URL #}
+                    <a href="{{ shortlink_url }}">{{ path }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

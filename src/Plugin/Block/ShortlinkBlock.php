@@ -155,7 +155,6 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       '#shortlinks' => $shortlinks,
       '#entity' => $entity,
       '#current_path' => $path,
-
       // Setup cacheability.
       '#cache' => [
         'tags' => $entity ? $entity->getCacheTags() : [],

@@ -11,6 +11,7 @@ use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Routing\CurrentRouteMatch;
 use Drupal\Core\Path\PathValidatorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -207,10 +208,15 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       '#items' => $items,
       '#cache' => [
         'tags' => $tags,
+        'context' => $this->getCacheContexts(),
       ],
     ];
 
     return $build;
+  }
+
+  public function getCacheContexts() {
+    return Cache::mergeContexts(parent::getCacheContexts(), ['url.path']);
   }
 
 }

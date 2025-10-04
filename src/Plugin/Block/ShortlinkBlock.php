@@ -106,20 +106,16 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
    * {@inheritdoc}
    */
   public function build(): array {
-    // Check for the required permission. You will need to define this
-    // permission in your module's shortlink_manager.permissions.yml file.
+    // Check for the required permission.
     if (!$this->currentUser->hasPermission('view shortlink block')) {
       return [];
     }
 
     $shortlink_storage = $this->entityTypeManager->getStorage('shortlink');
-
     $request = $this->requestStack->getCurrentRequest();
-
-    // Get the path without the query string.
     $path = $request->getPathInfo();
+    $entity = NULL;
 
-    // Get the Shortlink that has a destination_override that matches $path.
     $shortlink_ids = $shortlink_storage->getQuery()
       ->condition('destination_override', $path)
       ->condition('status', TRUE)
@@ -127,9 +123,6 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       ->execute();
 
     if (empty($shortlink_ids)) {
-      $entity = NULL;
-
-      // Check for a canonical entity route parameter.
       foreach ($this->routeMatch->getParameters()->all() as $param) {
         if ($param instanceof EntityInterface) {
           $entity = $param;
@@ -138,11 +131,8 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       }
 
       if (!is_null($entity)) {
-        // Get the entity type ID and entity ID.
         $entity_type_id = $entity->getEntityTypeId();
         $entity_id = $entity->id();
-
-        // Query for shortlink entities that point to this entity.
 
         $shortlink_ids = $shortlink_storage->getQuery()
           ->condition('target_entity_type', $entity_type_id)
@@ -160,55 +150,16 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
 
     $shortlinks = $shortlink_storage->loadMultiple($shortlink_ids);
 
-    $items = [];
-
-    /** @var \Drupal\shortlink_manager\Entity\Shortlink $shortlink */
-    foreach ($shortlinks as $shortlink) {
-      if (!empty($shortlink->getDestinationOverride())) {
-        \Drupal::logger('shortlink')->debug('<pre>@data</pre>', ['@data' => $shortlink->getDestinationOverride()]);
-        $path = $shortlink->getDestinationOverride();
-        /*
-         * If the destination override begins with "/", this is considered local
-         * to this site so we'll try to validate the path. If it does not validate
-         * we will skip adding the link. External URL's we will assume are always
-         * valid and show the shortlink regardless.
-         */
-        if ( strpos($path, '/') === 1) {
-          if (!$this->pathValidator->isValid($path)) {
-            continue;
-          }
-          $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
-        } else {
-          $shortlink_url = Url::fromUserInput($shortlink->getPath(), ['absolute' => TRUE]);
-        }
-      } else {
-        $shortlink_url = Url::fromUri('internal:/' . $shortlink->getPath(), ['absolute' => TRUE]);
-      }
-
-      $path = $shortlink->getPath();
-      $utm_set = $shortlink->getUtmSet();
-
-      if( !is_null($utm_set)) {
-        $label = $utm_set->label();
-      } else {
-        $label = $this->t('General link');
-      }
-
-      $items[] = Link::fromTextAndUrl($label . ': ' . $path, $shortlink_url);
-    }
-
-    if ( !empty($entity) ) {
-      $tags = $entity->getCacheTags();
-    } else {
-      $tags = [];
-    }
-
     $build = [
-      '#theme' => 'item_list',
-      '#items' => $items,
+      '#theme' => 'shortlink_manager_block_content',
+      '#shortlinks' => $shortlinks,
+      '#entity' => $entity,
+      '#current_path' => $path,
+
+      // Setup cacheability.
       '#cache' => [
-        'tags' => $tags,
-        'context' => $this->getCacheContexts(),
+        'tags' => $entity ? $entity->getCacheTags() : [],
+        'contexts' => $this->getCacheContexts(),
       ],
     ];
 

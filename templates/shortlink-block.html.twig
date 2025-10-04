@@ -1,0 +1,52 @@
+{#
+/**
+ * @file
+ * Custom template for the shortlink block content with copy functionality.
+ *
+ * Available variables:
+ * - shortlinks: An array of Shortlink entity objects.
+ * - entity: The target EntityInterface object (if a canonical route was matched).
+ */
+#}
+{% if shortlinks %}
+    <div class="shortlinks-wrapper">
+        <h3 class="shortlinks-title">{{ 'Shortlinks'|t }}</h3>
+        <ul class="shortlinks-list">
+            {% for shortlink in shortlinks %}
+                {# Load the UTM Set entity from the shortlink field if it exists #}
+                {% set utm_set = shortlink.utm_set.entity %}
+
+                {# Get the raw path property. This is the short path, e.g., /go/xyz #}
+                {% set path = shortlink.path.value %}
+
+                {# Determine the display label #}
+                {% set label = utm_set ? utm_set.label : 'General Link'|t %}
+
+                {# Get the absolute URL for the shortlink path. This is the full URL that needs to be copied. #}
+                {% set shortlink_url = url('internal:/' ~ path, {'absolute': true}) %}
+
+                <li class="shortlink-item" id="shortlink-item-{{ shortlink.id }}">
+
+                    {#
+                    1. The button now holds the clipboard icon.
+                    2. The full shortlink URL is stored in the data-link attribute.
+                    #}
+                    <button
+                            class="shortlink-copy-button"
+                            data-shortlink-url="{{ shortlink_url }}"
+                            title="{{ 'Copy ' ~ label ~ ' link to clipboard'|t }}"
+                    >
+                        {# Font Awesome Clipboard Icon #}
+                        <i class="fa-solid fa-clipboard" aria-hidden="true"></i>
+                    </button>
+
+                    {#
+                    The visible label for the user. We remove the path display here.
+                    #}
+                    <span class="shortlink-label">{{ label }}</span>
+
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

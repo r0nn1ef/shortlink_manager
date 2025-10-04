@@ -10,6 +10,22 @@ use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\shortlink_manager\Entity\Shortlink;
 
 /**
+ * Implements hook_theme().
+ */
+function shortlink_manager_theme(): array {
+  return [
+    'shortlink_manager_block_content' => [
+      'variables' => [
+        'shortlinks' => NULL,
+        'entity' => NULL,
+        'current_path' => NULL,
+      ],
+      'template' => 'shortlink-block',
+    ],
+  ];
+}
+
+/**
  * Implements hook_entity_insert().
  */
 function shortlink_manager_entity_insert(EntityInterface $entity): void {

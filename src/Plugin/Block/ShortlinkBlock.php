@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\shortlink_manager\Plugin\Block;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityInterface;
@@ -16,6 +17,7 @@ use Drupal\Core\Routing\CurrentRouteMatch;
 use Drupal\Core\Path\PathValidatorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Provides a block to display shortlinks for the current page.
@@ -106,16 +108,90 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
    * {@inheritdoc}
    */
   public function build(): array {
-    // Check for the required permission.
-    if (!$this->currentUser->hasPermission('view shortlink block')) {
+    $request = $this->requestStack->getCurrentRequest();
+    $results = $this->findShortlinks($request);
+    $shortlinks = $results['shortlinks'];
+    $entity = $results['entity'];
+    $path = $request->getPathInfo();
+
+    // The access check in blockAccess() should prevent us from getting here
+    // if there are no shortlinks or the user doesn't have permission.
+    if (empty($shortlinks)) {
       return [];
     }
 
-    $shortlink_storage = $this->entityTypeManager->getStorage('shortlink');
+    $build = [
+      '#theme' => 'shortlink_manager_block_content',
+      '#shortlinks' => $shortlinks,
+      '#entity' => $entity,
+      '#current_path' => $path,
+      // Setup cacheability.
+      '#cache' => [
+        // Ensure cache tags from the entity are included.
+        'tags' => $entity ? $entity->getCacheTags() : [],
+        'contexts' => $this->getCacheContexts(),
+      ],
+    ];
+
+    return $build;
+
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public function getCacheContexts(): array {
+    return Cache::mergeContexts(parent::getCacheContexts(), ['url.path']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function blockAccess(AccountInterface $account) {
+    // 1. Check the required permission first.
+    if (!$account->hasPermission('view shortlink block')) {
+      return AccessResult::forbidden()->addCacheContexts(['user.permissions']);
+    }
+
+    // 2. Check if there are any shortlinks for the current page.
     $request = $this->requestStack->getCurrentRequest();
+    $results = $this->findShortlinks($request);
+
+    if (!empty($results['shortlinks'])) {
+      $access_result = AccessResult::allowed();
+      // Add cache tags if an entity was found, ensuring the block is
+      // invalidated if the entity changes.
+      if ($results['entity'] instanceof EntityInterface) {
+        $access_result->addCacheableDependency($results['entity']);
+      }
+      // Add the 'url.path' context, which is also in getCacheContexts().
+      $access_result->addCacheContexts(['url.path']);
+      return $access_result;
+    }
+
+    // 3. Deny access if no shortlinks are found.
+    // The cache contexts and dependencies from findShortlinks are automatically
+    // inherited if we return AccessResult::forbidden(), but explicitly adding
+    // 'url.path' ensures correct caching.
+    return AccessResult::forbidden()->addCacheContexts(['url.path']);
+  }
+
+  /**
+   * Finds shortlink entities for the current request.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   * The current request.
+   *
+   * @return array
+   * An array containing the shortlinks and the target entity (if found).
+   */
+  private function findShortlinks(Request $request): array {
+    $shortlink_storage = $this->entityTypeManager->getStorage('shortlink');
     $path = $request->getPathInfo();
     $entity = NULL;
+    $shortlinks = [];
 
+    // 1. Check for shortlinks with a destination override matching the path.
     $shortlink_ids = $shortlink_storage->getQuery()
       ->condition('destination_override', $path)
       ->condition('status', TRUE)
@@ -123,6 +199,7 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       ->execute();
 
     if (empty($shortlink_ids)) {
+      // 2. If none found, check for a target entity in the route parameters.
       foreach ($this->routeMatch->getParameters()->all() as $param) {
         if ($param instanceof EntityInterface) {
           $entity = $param;
@@ -143,33 +220,14 @@ final class ShortlinkBlock extends BlockBase implements ContainerFactoryPluginIn
       }
     }
 
-    if (empty($shortlink_ids)) {
-      // No shortlinks found for this entity.
-      return [];
+    if (!empty($shortlink_ids)) {
+      $shortlinks = $shortlink_storage->loadMultiple($shortlink_ids);
     }
 
-    $shortlinks = $shortlink_storage->loadMultiple($shortlink_ids);
-
-    $build = [
-      '#theme' => 'shortlink_manager_block_content',
-      '#shortlinks' => $shortlinks,
-      '#entity' => $entity,
-      '#current_path' => $path,
-      // Setup cacheability.
-      '#cache' => [
-        'tags' => $entity ? $entity->getCacheTags() : [],
-        'contexts' => $this->getCacheContexts(),
-      ],
+    return [
+      'shortlinks' => $shortlinks,
+      'entity' => $entity,
     ];
-
-    return $build;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public function getCacheContexts(): array {
-    return Cache::mergeContexts(parent::getCacheContexts(), ['url.path']);
   }
 
 }

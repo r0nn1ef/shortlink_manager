@@ -9,6 +9,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Routing\TrustedRedirectResponse;
+use Drupal\Core\Utility\Token;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,6 +33,14 @@ final class ShortlinkRedirectController extends ControllerBase {
    */
   protected $entityTypeManager;
 
+
+  /**
+   * The token service.
+   *
+   * @var \Drupal\Core\Utility\Token
+   */
+  protected $token;
+
   /**
    * Constructs a new ShortlinkRedirectController object.
    *
@@ -39,10 +48,13 @@ final class ShortlinkRedirectController extends ControllerBase {
    *   The config factory.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager.
+   * @param \Drupal\Core\Utility\Token $token
+   *   The token service.
    */
-  public function __construct(ConfigFactoryInterface $configFactory, EntityTypeManagerInterface $entityTypeManager) {
+  public function __construct(ConfigFactoryInterface $configFactory, EntityTypeManagerInterface $entityTypeManager, Token $token) {
     $this->configFactory = $configFactory;
     $this->entityTypeManager = $entityTypeManager;
+    $this->token = $token;
   }
 
   /**
@@ -51,7 +63,8 @@ final class ShortlinkRedirectController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('token')
     );
   }
 
@@ -68,6 +81,8 @@ final class ShortlinkRedirectController extends ControllerBase {
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
+
+    $destination_entity = NULL;
 
     $path_prefix = $config->get('path_prefix') ?: 'go';
 
@@ -119,11 +134,28 @@ final class ShortlinkRedirectController extends ControllerBase {
       $destination_url = Url::fromRoute('entity.' . $destination_entity->getEntityTypeId() . '.canonical', [$destination_entity->getEntityType()->id() => $destination_entity->id()]);
     }
 
+    // Set up the data context for token replacement.
+    $data = [];
+    if ($destination_entity) {
+      $data[$destination_entity->getEntityTypeId()] = $destination_entity;
+    }
+
     // Check if the shortlink has an associated UTM Set and add the parameters.
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
       $query_params = [];
+
+      // Define a helper function (closure) to process tokens.
+      $process_token = function (string $raw_value, array $data, array $options = []) {
+        // Only run replacement if the value looks like it contains a token.
+        if (str_contains($raw_value, '[')) {
+          // Use the injected token service.
+          return $this->token->replace($raw_value, $data, $options);
+        }
+        return $raw_value;
+      };
+
       if (!empty($utm_set->getUtmSource())) {
         $query_params['utm_source'] = $utm_set->getUtmSource();
       }
@@ -141,6 +173,13 @@ final class ShortlinkRedirectController extends ControllerBase {
       }
       else {
         $query_params['utm_content'] = $slug;
+      }
+
+      foreach ($query_params as $key => $value) {
+        if (empty($query_params[$key])) {
+          continue;
+        }
+        $query_params[$key] = $process_token($value, $data);
       }
 
       // Merge the new query parameters with any existing ones.

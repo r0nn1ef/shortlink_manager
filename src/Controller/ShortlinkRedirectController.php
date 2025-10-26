@@ -110,6 +110,16 @@ final class ShortlinkRedirectController extends ControllerBase {
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {
       $destination_url_string = $shortlink->getDestinationOverride();
+
+      // NEW: Set up data context for token replacement (using the slug as context).
+      // We pass $slug here as the only known context if no destination entity exists.
+      $data = ['shortlink' => (object) ['slug' => $slug]];
+
+      // NEW: Process token replacement on the destination URL string.
+      // We use the injected token service.
+      $processed_destination = $this->token->replace($destination_url_string, $data);
+
+      $destination_url_string = $processed_destination;
       /*
        * If the destination override begins with "/", it is considered internal
        * to this site. Otherwise, it is considered an external URL.

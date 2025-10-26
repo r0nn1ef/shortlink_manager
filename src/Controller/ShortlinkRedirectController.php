@@ -186,12 +186,11 @@ final class ShortlinkRedirectController extends ControllerBase {
         if (empty($query_params[$key])) {
           continue;
         }
-        $value = strtolower($value);
         $new_value = $process_token($value, $data);
         $sanitized_value = preg_replace($pattern, $replacement, $new_value);
         $sanitized_value = preg_replace($double_underscore_pattern, '_', $sanitized_value);
         $sanitized_value = trim($sanitized_value, '_');
-        $query_params[$key] = $sanitized_value;
+        $query_params[$key] = strtolower($sanitized_value);
       }
 
       // Merge the new query parameters with any existing ones.

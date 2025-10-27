@@ -107,7 +107,7 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    * {@inheritDoc}
    */
   public function getStatus(): bool {
-    return $this->status;
+    return (bool) $this->status;
   }
 
   /**
@@ -156,7 +156,7 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    * {@inheritdoc}
    */
   public function setCustomParameters(array $custom_parameters): self {
-    $this->custom_parameters = $custom_parameters;
+    $this->set('custom_parameters', $custom_parameters);
     return $this;
   }
 

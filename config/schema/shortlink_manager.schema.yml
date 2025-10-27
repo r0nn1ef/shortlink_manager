@@ -13,43 +13,42 @@ shortlink_manager.shortlink.*:
     description:
       type: string
 shortlink_manager.utm_set.*:
-type: config_entity
-label: UTM Set
-mapping:
-  id:
-    type: string
-    label: ID
-  label:
-    type: label
-    label: Label
-  uuid:
-    type: string
-  description:
-    type: string
-  utm_source:
-    type: string
-    label: 'UTM Source'
-  utm_medium: # Correctly aligned with utm_source
-    type: string
-    label: 'UTM Medium'
-  utm_campaign: # Correctly aligned
-    type: string
-    label: 'UTM Campaign'
-  utm_term: # Correctly aligned
-    type: string
-    label: 'UTM Term'
-  utm_content: # Correctly aligned
-    type: string
-    label: 'UTM Content'
-  status: # Correctly aligned
-    type: boolean
-    label: 'Enabled status'
-  custom_parameters: # Correctly aligned
-    type: sequence
-    label: 'Custom UTM Parameters'
-    sequence:
+  type: config_entity
+  label: UTM Set
+  mapping:
+    id:
       type: string
-      label: 'Parameter Key:Value'
+      label: ID
+    label:
+      type: label
+      label: Label
+    uuid:
+      type: string
+    description:
+      type: string
+    utm_source:
+      type: string
+      label: 'UTM Source'
+    utm_medium: # Correctly aligned with utm_source
+      type: string
+      label: 'UTM Medium'
+    utm_campaign: # Correctly aligned
+      type: string
+      label: 'UTM Campaign'
+    utm_term: # Correctly aligned
+      type: string
+      label: 'UTM Term'
+    utm_content: # Correctly aligned
+      type: string
+      label: 'UTM Content'
+    status: # Correctly aligned
+      type: boolean
+      label: 'Enabled status'
+    custom_parameters: # Correctly aligned
+      type: sequence
+      label: 'Custom UTM Parameters'
+      sequence:
+        type: string
 shortlink_manager.settings:
   type: config_object
   label: 'Shortlink manager settings'

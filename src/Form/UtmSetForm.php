@@ -96,19 +96,19 @@ final class UtmSetForm extends EntityForm {
     /*
      * We want the tree format so we can easily recreate the array before saving.
      */
-    $form['custom_parameters_details'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Custom Parameter Options'),
-      '#open' => !empty($custom_parameters),
-      '#tree' => FALSE,
-    ];
+    //    $form['custom_parameters_details'] = [
+    //      '#type' => 'details',
+    //      '#title' => $this->t('Custom Parameter Options'),
+    //      '#open' => !empty($custom_parameters),
+    //      '#tree' => FALSE,
+    //    ];
 
     $custom_parameters = $utm_set->getCustomParameters();
     $custom_parameters_string = implode("\n", $custom_parameters);
     $custom_parameters_string = trim($custom_parameters_string);
 
     $cp_description = $this->t('Enter any valid custom UTM parameters in key:value format, one per line. Tokens are supported for values. (e.g., sales_rep:[node:author:name])');
-    $form['custom_parameters_details']['custom_parameters'] = [
+    $form['custom_parameters_string'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Custom Parameters'),
       '#default_value' => $custom_parameters_string,
@@ -130,6 +130,40 @@ final class UtmSetForm extends EntityForm {
   /**
    * {@inheritdoc}
    */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    parent::validateForm($form, $form_state); // Always call parent first!
+
+    $raw_params_string = trim($form_state->getValue('custom_parameters_string') ?? '');
+
+    $custom_parameters = [];
+    if (!empty($raw_params_string)) {
+      $raw_array = explode("\n", $raw_params_string);
+      // Process and filter array
+      $custom_parameters = array_filter(array_map('trim', $raw_array));
+    }
+
+    // 1. CRITICAL: Store the processed array under a non-entity key.
+    $form_state->setValue('processed_custom_parameters', $custom_parameters);
+
+    // 2. CRITICAL: Unset the field's raw value to prevent the TypeError
+    // when core runs copyFormValuesToEntity() later.
+    $form_state->unsetValue('custom_parameters_string');
+  }
+
+  public function submitForm(array &$form, FormStateInterface $form_state): void {
+    // 1. Retrieve the processed array from the form state.
+    $custom_parameters = $form_state->getValue('processed_custom_parameters', []);
+
+    // 2. Set the property on the entity.
+    $this->entity->setCustomParameters($custom_parameters);
+
+    // 3. Let the parent run its course, which will include save().
+    parent::submitForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function save(array $form, FormStateInterface $form_state): void {
     /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
     $utm_set = $this->entity;
@@ -141,37 +175,5 @@ final class UtmSetForm extends EntityForm {
 
     $form_state->setRedirectUrl($utm_set->toUrl('collection'));
   }
-
-  /**
-   * {@inheritdoc}
-   * @param \Drupal\shortlink_manager\Form\EntityInterface $entity
-   * @param array $form
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   */
-  /**
-   * {@inheritdoc}
-   */
-  protected function copyFormValuesToEntity(EntityInterface $entity, array $form, FormStateInterface $form_state): void {
-    // 1. Get raw textarea input.
-    $raw_params_string = trim($form_state->getValue('custom_parameters') ?? '');
-
-    $custom_parameters = [];
-    if (!empty($raw_params_string)) {
-      $raw_params_string = explode("\n", $raw_params_string);
-      foreach($raw_params_string as $param) {
-        $custom_parameters[] = $param;
-      }
-    }
-
-    // 2. Assign processed array to entity.
-    $this->entity->setCustomParameters($custom_parameters);
-
-    // 3. Clean up form state so parent doesn’t try to set it again.
-    $form_state->unsetValue('custom_parameters');
-
-    // 4. Let parent handle the remaining simple fields.
-    parent::copyFormValuesToEntity($entity, $form, $form_state);
-  }
-
 
 }

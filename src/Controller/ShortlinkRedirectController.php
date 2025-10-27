@@ -184,6 +184,27 @@ final class ShortlinkRedirectController extends ControllerBase {
       else {
         $query_params['utm_content'] = $slug;
       }
+      if(!empty($utm_set->getCustomParameters())) {
+        $custom_parameters = $utm_set->getCustomParameters();
+        foreach ($custom_parameters as $parameter_string) {
+          $matches = [];
+
+          // Regex: Matches everything before the FIRST colon (the key) and
+          // everything after it (the value).
+          $pattern = '/^([^:]+):(.+)$/';
+
+          if (preg_match($pattern, $parameter_string, $matches)) {
+            $key = trim($matches[1]);
+            $value = trim($matches[2]);
+
+            // Assign the split key/value to the query parameters.
+            // NOTE: The token replacement for $value must happen later
+            // in your controller, as discussed for the UTM params!
+            $query_params[$key] = $value;
+          }
+          // Optional: Add logging/error handling for misformatted parameters here.
+        }
+      }
 
       /*
        * Used to clean up the token replacements if needed.
@@ -196,7 +217,8 @@ final class ShortlinkRedirectController extends ControllerBase {
         if (empty($query_params[$key])) {
           continue;
         }
-        $new_value = $process_token($value, $data);
+        $new_value = $this->token->replace($value, $data);
+        \Drupal::logger('ShortlinkRedirectController')->debug('new_value: ' . $new_value);
         $sanitized_value = preg_replace($pattern, $replacement, $new_value);
         $sanitized_value = preg_replace($double_underscore_pattern, '_', $sanitized_value);
         $sanitized_value = trim($sanitized_value, '_');

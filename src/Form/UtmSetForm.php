@@ -164,12 +164,16 @@ final class UtmSetForm extends EntityForm {
     // CRITICAL FIX: Unset the raw string value from the form state.
     // This prevents the parent::copyFormValuesToEntity() call (step 3)
     // from seeing the raw string and triggering the TypeError.
-    $form_state->unsetValue('custom_parameters_details');
+    // Replace the two unsetValue('custom_parameters_details') calls with this:
+    $form_state->unsetValue('custom_parameters'); // <-- THIS is the key to unset.
 
     // 2. Remove the surrounding details element key if it exists in the form state
     // to prevent it from causing issues with entity properties.
-    $form_state->unsetValue('custom_parameters_details');
-    $this->logger('UtmSetForm')->debug('FormState custom_parameter_details value:<br><pre>@data</pre>', ['@data' => print_r($form_state->getValue(['custom_parameter_details', 'custom_parameters']), true)]);
+    // This call is redundant and incorrect for form values: $form_state->unsetValue('custom_parameters_details');
+
+    // Logging for 'custom_parameter_details' is also incorrect due to '#tree' => FALSE.
+    // $this->logger('UtmSetForm')->debug('FormState custom_parameter_details value:<br><pre>@data</pre>', ['@data' => print_r($form_state->getValue(['custom_parameter_details', 'custom_parameters']), true)]);
+
     // 3. Call the parent method to copy all other (non-custom) form values.
     parent::copyFormValuesToEntity($entity, $form, $form_state);
   }

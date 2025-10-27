@@ -59,4 +59,20 @@ interface UtmSetInterface extends ConfigEntityInterface {
    */
   public function getUtmContent(): string;
 
+  /**
+   * @return array
+   *   The custom UTM parameters.
+   */
+  public function getCustomParameters(): array;
+
+  /**
+   * Sets the custom campaign parameters.
+   *
+   * @param array $custom_parameters
+   *   The custom parameters array (sequence of 'key:value' strings).
+   *
+   * @return $this
+   */
+  public function setCustomParameters(array $custom_parameters): self;
+
 }

@@ -89,6 +89,32 @@ final class UtmSetForm extends EntityForm {
       '#description' => $this->t('Campaign content for A/B testing or distinguishing ads.'),
     ];
 
+    $custom_parameters = $utm_set->getCustomParameters();
+
+    /*
+     * We want the tree format so we can easily recreate the array before saving.
+     */
+    $form['custom_parameters_details'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Custom Parameter Options'),
+      '#open' => !empty($custom_parameters),
+      '#tree' => FALSE,
+    ];
+
+    $custom_parameters_string = '';
+    foreach ($custom_parameters as $key => $value) {
+      $custom_parameters_string .= $key . ':' . $value . "\n";
+    }
+    $custom_parameters_string = trim($custom_parameters_string);
+    $cp_description = $this->t('Enter any valid custom UTM parameters in key:value format, one per line. Tokens are supported for values.');
+    $form['custom_parameters_details']['custom_parameters'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Custom Parameters'),
+      '#default_value' => $custom_parameters_string,
+      '#description' => $cp_description,
+    ];
+
+
     $form['status'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enabled'),
@@ -106,6 +132,18 @@ final class UtmSetForm extends EntityForm {
   public function save(array $form, FormStateInterface $form_state): void {
     /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
     $utm_set = $this->entity;
+
+    /*
+     * Parse and set the custom UTM parameters if there are any.
+     */
+    $custom_parameters = [];
+    $raw_params_string = trim($form_state->getValue('custom_parameters'));
+    if (!empty($raw_params_string)) {
+      $raw_array = explode("\n", $raw_params_string);
+      $custom_parameters = array_filter(array_map('trim', $raw_array));
+    }
+    $utm_set->setCustomParameters($custom_parameters);
+
     $utm_set->save();
 
     $this->messenger()->addStatus($this->t('Saved the %label UTM Set.', [

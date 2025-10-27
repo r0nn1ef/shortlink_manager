@@ -169,7 +169,7 @@ final class UtmSetForm extends EntityForm {
     // 2. Remove the surrounding details element key if it exists in the form state
     // to prevent it from causing issues with entity properties.
     $form_state->unsetValue('custom_parameters_details');
-    $this->logger('UtmSetForm')->debug('FormState values:<br><pre>@data</pre>', ['@data' => print_r($form_state->getValues(), true)]);
+    $this->logger('UtmSetForm')->debug('FormState custom_parameter_details value:<br><pre>@data</pre>', ['@data' => print_r($form_state->getValue('custom_parameter_details'), true)]);
     // 3. Call the parent method to copy all other (non-custom) form values.
     parent::copyFormValuesToEntity($entity, $form, $form_state);
   }

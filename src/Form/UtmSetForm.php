@@ -149,16 +149,17 @@ final class UtmSetForm extends EntityForm {
    */
   protected function copyFormValuesToEntity(EntityInterface $entity, array $form, FormStateInterface $form_state): void {
     // 1. Process the custom_parameters field FIRST.
-    $raw_params_string = trim($form_state->getValue('custom_parameters'));
+    $raw_params_string = trim($form_state->getValue('custom_parameters') ?? '');
 
     $custom_parameters = [];
     if (!empty($raw_params_string)) {
       $raw_array = explode("\n", $raw_params_string);
       $custom_parameters = array_filter(array_map('trim', $raw_array));
     }
+    $this->logger('UtmSetForm')->debug('Custom parameters:<br><pre>@data</pre>', ['data' => print_r($custom_parameters, true)]);
 
     // Set the property on the entity object as a clean array.
-    $this->entity->setCustomParameters($custom_parameters);
+    $entity->set('custom_parameters', $custom_parameters);
 
     // CRITICAL FIX: Unset the raw string value from the form state.
     // This prevents the parent::copyFormValuesToEntity() call (step 3)

@@ -6,6 +6,7 @@ namespace Drupal\shortlink_manager\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\shortlink_manager\UtmSetInterface;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Defines the UTM Set config entity.
@@ -50,6 +51,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *     "utm_campaign",
  *     "utm_term",
  *     "utm_content",
+ *     "custom_parameters",
  *     "status",
  *   },
  * )
@@ -97,10 +99,15 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
   protected string $utm_content = '';
 
   /**
+   * @var array Custom UTM parameters in the form of 'key' => 'value'.
+   */
+  protected array $custom_parameters = [];
+
+  /**
    * {@inheritDoc}
    */
   public function getStatus(): bool {
-    return $this->status;
+    return (bool) $this->status;
   }
 
   /**
@@ -136,6 +143,21 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    */
   public function getUtmContent(): string {
     return $this->utm_content;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCustomParameters(): array {
+    return $this->custom_parameters;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setCustomParameters(array $custom_parameters): self {
+    $this->set('custom_parameters', $custom_parameters);
+    return $this;
   }
 
 }

@@ -131,26 +131,6 @@ final class UtmSetForm extends EntityForm {
   public function save(array $form, FormStateInterface $form_state): void {
     /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
     $utm_set = $this->entity;
-
-    // --- 1. Custom Processing and Setting ---
-    $custom_parameters = [];
-    // Accessing the flat key thanks to '#tree' => FALSE.
-    $raw_params_string = trim($form_state->getValue('custom_parameters'));
-
-    if (!empty($raw_params_string)) {
-      $raw_array = explode("\n", $raw_params_string);
-      $custom_parameters = array_filter(array_map('trim', $raw_array));
-    }
-
-    // Set the property onto the entity object as a clean array.
-    $utm_set->setCustomParameters($custom_parameters);
-
-    // --- 2. THE CRITICAL FIX ---
-    // This prevents ConfigEntityBase from seeing the raw string value
-    // and attempting to overwrite your array with a string, which causes the TypeError.
-    $form_state->unsetValue('custom_parameters');
-
-    // --- 3. Save the entity ---
     $utm_set->save();
 
     $this->messenger()->addStatus($this->t('Saved the %label UTM Set.', [

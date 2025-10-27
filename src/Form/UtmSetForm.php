@@ -102,8 +102,8 @@ final class UtmSetForm extends EntityForm {
     ];
 
     $custom_parameters_string = '';
-    foreach ($custom_parameters as $key => $value) {
-      $custom_parameters_string .= $key . ':' . $value . "\n";
+    foreach ($custom_parameters as $custom_parameter) {
+      $custom_parameters_string .= $custom_parameter . "\n";
     }
     $custom_parameters_string = trim($custom_parameters_string);
     $cp_description = $this->t('Enter any valid custom UTM parameters in key:value format, one per line. Tokens are supported for values.');

@@ -6,6 +6,7 @@ namespace Drupal\shortlink_manager\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\shortlink_manager\UtmSetInterface;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Defines the UTM Set config entity.
@@ -157,6 +158,35 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
   public function setCustomParameters(array $custom_parameters): self {
     $this->custom_parameters = $custom_parameters;
     return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function copyFormValuesToEntity(array $form, FormStateInterface $form_state): void {
+    // 1. Process the custom_parameters field FIRST.
+    $raw_params_string = trim($form_state->getValue('custom_parameters'));
+
+    $custom_parameters = [];
+    if (!empty($raw_params_string)) {
+      $raw_array = explode("\n", $raw_params_string);
+      $custom_parameters = array_filter(array_map('trim', $raw_array));
+    }
+
+    // Set the property on the entity object as a clean array.
+    $this->entity->setCustomParameters($custom_parameters);
+
+    // CRITICAL FIX: Unset the raw string value from the form state.
+    // This prevents the parent::copyFormValuesToEntity() call (step 3)
+    // from seeing the raw string and triggering the TypeError.
+    $form_state->unsetValue('custom_parameters');
+
+    // 2. Remove the surrounding details element key if it exists in the form state
+    // to prevent it from causing issues with entity properties.
+    $form_state->unsetValue('custom_parameters_details');
+
+    // 3. Call the parent method to copy all other (non-custom) form values.
+    parent::copyFormValuesToEntity($form, $form_state);
   }
 
 }

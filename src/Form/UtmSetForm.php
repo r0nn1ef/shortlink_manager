@@ -156,7 +156,7 @@ final class UtmSetForm extends EntityForm {
       $raw_array = explode("\n", $raw_params_string);
       $custom_parameters = array_filter(array_map('trim', $raw_array));
     }
-    $this->logger('UtmSetForm')->debug('Custom parameters:<br><pre>@data</pre>', ['data' => print_r($custom_parameters, true)]);
+    $this->logger('UtmSetForm')->debug('Custom parameters:<br><pre>@data</pre>', ['@data' => print_r($custom_parameters, true)]);
 
     // Set the property on the entity object as a clean array.
     $entity->set('custom_parameters', $custom_parameters);

@@ -101,11 +101,10 @@ final class UtmSetForm extends EntityForm {
       '#tree' => FALSE,
     ];
 
-    $custom_parameters_string = '';
-    foreach ($custom_parameters as $custom_parameter) {
-      $custom_parameters_string .= $custom_parameter . "\n";
-    }
+    $custom_parameters = $utm_set->getCustomParameters();
+    $custom_parameters_string = implode("\n", $custom_parameters);
     $custom_parameters_string = trim($custom_parameters_string);
+
     $cp_description = $this->t('Enter any valid custom UTM parameters in key:value format, one per line. Tokens are supported for values.');
     $form['custom_parameters_details']['custom_parameters'] = [
       '#type' => 'textarea',
@@ -143,6 +142,7 @@ final class UtmSetForm extends EntityForm {
       $custom_parameters = array_filter(array_map('trim', $raw_array));
     }
     $utm_set->setCustomParameters($custom_parameters);
+    $form_state->unsetValue('custom_parameters');
 
     $utm_set->save();
 

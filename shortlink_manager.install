@@ -148,7 +148,7 @@ function shortlink_manager_update_10502(&$sandbox): void {
 /**
  * Add default passthrough UTM parameters.
  */
-function shorlink_manager_update_10503(&$sandbox): void {
+function shortlink_manager_update_10503(&$sandbox): void {
   $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
 
   if ($config->get('passthrough_parameters') === NULL) {

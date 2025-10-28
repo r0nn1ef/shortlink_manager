@@ -223,6 +223,7 @@ final class UtmSetForm extends EntityForm implements ContainerInjectionInterface
     }
 
     $updated_keys = array_unique(array_merge($passthrough_keys, $new_keys));
+    $updated_keys = array_values($updated_keys);
 
     // Save the updated configuration.
     $config

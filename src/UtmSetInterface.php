@@ -59,4 +59,11 @@ interface UtmSetInterface extends ConfigEntityInterface {
    */
   public function getUtmContent(): string;
 
+  /**
+   * Gets the UTM parameters as an array ready to pass to a Url as options.
+   *
+   * @return array
+   */
+  public function getUtmParameters(): array;
+
 }

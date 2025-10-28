@@ -154,7 +154,7 @@ final class ShortlinkRedirectController extends ControllerBase {
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
-      $query_params = [];
+      $query_params = $utm_set->getUtmParameters();
 
       // Define a helper function (closure) to process tokens.
       $process_token = function (string $raw_value, array $data, array $options = []) {
@@ -166,25 +166,6 @@ final class ShortlinkRedirectController extends ControllerBase {
         return $raw_value;
       };
 
-      if (!empty($utm_set->getUtmSource())) {
-        $query_params['utm_source'] = $utm_set->getUtmSource();
-      }
-      if (!empty($utm_set->getUtmMedium())) {
-        $query_params['utm_medium'] = $utm_set->getUtmMedium();
-      }
-      if (!empty($utm_set->getUtmCampaign())) {
-        $query_params['utm_campaign'] = $utm_set->getUtmCampaign();
-      }
-      if (!empty($utm_set->getUtmTerm())) {
-        $query_params['utm_term'] = $utm_set->getUtmTerm();
-      }
-      if (!empty($utm_set->getUtmContent())) {
-        $query_params['utm_content'] = $utm_set->getUtmContent();
-      }
-      else {
-        $query_params['utm_content'] = $slug;
-      }
-
       /*
        * Used to clean up the token replacements if needed.
        */
@@ -192,8 +173,7 @@ final class ShortlinkRedirectController extends ControllerBase {
       $replacement = '_';
       $double_underscore_pattern = '/_+/';
       foreach ($query_params as $key => $value) {
-
-        if (empty($query_params[$key])) {
+        if (empty($value)) {
           continue;
         }
         $new_value = $process_token($value, $data);

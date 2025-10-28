@@ -11,7 +11,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  * Defines the UTM Set config entity.
  *
  * @ConfigEntityType(
- *   id = "utm_set",
+ *   id = "this",
  *   label = @Translation("UTM Set"),
  *   label_collection = @Translation("UTM Sets"),
  *   label_singular = @Translation("utm set"),
@@ -28,13 +28,13 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *       "delete" = "Drupal\Core\Entity\EntityDeleteForm",
  *     },
  *   },
- *   config_prefix = "utm_set",
- *   admin_permission = "administer utm_set",
+ *   config_prefix = "this",
+ *   admin_permission = "administer this",
  *   links = {
  *     "collection" = "/admin/structure/utm-set",
  *     "add-form" = "/admin/structure/utm-set/add",
- *     "edit-form" = "/admin/structure/utm-set/{utm_set}",
- *     "delete-form" = "/admin/structure/utm-set/{utm_set}/delete",
+ *     "edit-form" = "/admin/structure/utm-set/{this}",
+ *     "delete-form" = "/admin/structure/utm-set/{this}/delete",
  *   },
  *   entity_keys = {
  *     "id" = "id",
@@ -136,6 +136,51 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    */
   public function getUtmContent(): string {
     return $this->utm_content;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getUtmParameters(): array {
+    $parameters = [];
+
+    if (!empty($this->getUtmSource())) {
+      $parameters['utm_source'] = $this->getUtmSource();
+    }
+    if (!empty($this->getUtmMedium())) {
+      $parameters['utm_medium'] = $this->getUtmMedium();
+    }
+    if (!empty($this->getUtmCampaign())) {
+      $parameters['utm_campaign'] = $this->getUtmCampaign();
+    }
+    if (!empty($this->getUtmTerm())) {
+      $parameters['utm_term'] = $this->getUtmTerm();
+    }
+    if (!empty($this->getUtmContent())) {
+      $parameters['utm_content'] = $this->getUtmContent();
+    }
+
+    if(!empty($this->getCustomParameters())) {
+      $custom_parameters = $this->getCustomParameters();
+      foreach ($custom_parameters as $parameter_string) {
+        $matches = [];
+        // Regex: Matches everything before the FIRST colon (the key) and
+        // everything after it (the value).
+        $pattern = '/^([^:]+):(.+)$/';
+
+        if (preg_match($pattern, $parameter_string, $matches)) {
+          $key = trim($matches[1]);
+          $value = trim($matches[2]);
+          // Assign the split key/value to the parameters.
+          // NOTE: The token replacement for $value must happen later
+          // in your code!
+          $parameters[$key] = $value;
+        }
+        // TODO: Add logging/error handling for misformatted parameters here.
+      }
+    }
+
+    return $parameters;
   }
 
 }

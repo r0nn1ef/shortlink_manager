@@ -158,7 +158,7 @@ final class ShortlinkRedirectController extends ControllerBase {
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
-      $query_params = [];
+      $query_params = $utm_set->getUtmParameters();
 
       // Define a helper function (closure) to process tokens.
       $process_token = function (string $raw_value, array $data, array $options = []) {

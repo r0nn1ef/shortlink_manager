@@ -60,7 +60,7 @@ function shortlink_manager_uninstall($is_syncing) {
 /**
  * Update shortlink base table to include missing core entity fields.
  */
-function shortlink_manager_update_10501() {
+function shortlink_manager_update_10501(&$sandbox) {
   $schema = \Drupal::database()->schema();
 
   // UUID column.
@@ -101,5 +101,65 @@ function shortlink_manager_update_10501() {
       'not null' => FALSE,
       'description' => 'The time that the shortlink was last edited.',
     ]);
+  }
+}
+
+/**
+ * Add the 'custom_parameters' property to the utm_set configuration entity.
+ */
+function shortlink_manager_update_10502(&$sandbox): void {
+  // Get the entity type manager service.
+  $entity_type_manager = \Drupal::entityTypeManager();
+
+  // Load the IDs of all existing UTM Set entities.
+  $utm_set_ids = $entity_type_manager->getStorage('utm_set')
+    ->getQuery()
+    ->accessCheck(FALSE)
+    ->execute();
+
+  if (empty($utm_set_ids)) {
+    // If no entities exist, we can stop here.
+    return;
+  }
+
+  // Load the configuration storage handler.
+  $config_storage = \Drupal::service('config.storage');
+
+  // Loop through all existing UTM Sets.
+  foreach ($utm_set_ids as $id) {
+    // The full configuration name for the entity.
+    $config_name = 'shortlink_manager.utm_set.' . $id;
+
+    // Load the configuration data directly.
+    if ($data = $config_storage->read($config_name)) {
+
+      // Check if the property already exists (e.g., if this update was re-run).
+      if (!isset($data['custom_parameters'])) {
+        // Add the new property with its default value.
+        $data['custom_parameters'] = [];
+
+        // Save the updated configuration data.
+        $config_storage->write($config_name, $data);
+      }
+    }
+  }
+}
+
+/**
+ * Add default passthrough UTM parameters.
+ */
+function shortlink_manager_update_10503(&$sandbox): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+
+  if ($config->get('passthrough_parameters') === NULL) {
+    $default_passthrough = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+    ];
+    $config->set('passthrough_parameters', $default_passthrough);
+    $config->save();
   }
 }

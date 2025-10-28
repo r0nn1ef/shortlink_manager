@@ -4,18 +4,50 @@ declare(strict_types=1);
 
 namespace Drupal\shortlink_manager\Form;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityForm;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Form handler for the UTM Set add/edit forms.
  */
-final class UtmSetForm extends EntityForm {
+final class UtmSetForm extends EntityForm implements ContainerInjectionInterface {
+
+  /**
+   * The configuration factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * Constructs a new UtmSetForm.
+   *
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   * The config factory.
+   */
+  public function __construct(ConfigFactoryInterface $config_factory) {
+    $this->configFactory = $config_factory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container): self { // 👈 5. Implement create()
+    return new UtmSetForm(
+      $container->get('config.factory')
+    );
+  }
+
 
   /**
    * {@inheritdoc}
    */
   public function form(array $form, FormStateInterface $form_state): array {
+    $form = parent::form($form, $form_state);
     $utm_set = $this->entity;
 
     $form['label'] = [
@@ -89,6 +121,31 @@ final class UtmSetForm extends EntityForm {
       '#description' => $this->t('Campaign content for A/B testing or distinguishing ads.'),
     ];
 
+    $custom_parameters = $utm_set->getCustomParameters();
+
+    /*
+     * We want the tree format so we can easily recreate the array before saving.
+     */
+        $form['custom_parameters_details'] = [
+          '#type' => 'details',
+          '#title' => $this->t('Custom Parameter Options'),
+          '#open' => !empty($custom_parameters),
+          '#tree' => FALSE,
+        ];
+
+    $custom_parameters = $utm_set->getCustomParameters();
+    $custom_parameters_string = implode("\n", $custom_parameters);
+    $custom_parameters_string = trim($custom_parameters_string);
+
+    $cp_description = $this->t('Enter any valid custom UTM parameters in key:value format, one per line. Tokens are supported for values. (e.g., sales_rep:[node:author:name])');
+    $form['custom_parameters_details']['custom_parameters_string'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Custom Parameters'),
+      '#default_value' => $custom_parameters_string,
+      '#description' => $cp_description,
+    ];
+
+
     $form['status'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enabled'),
@@ -97,7 +154,41 @@ final class UtmSetForm extends EntityForm {
       '#weight' => 100,
     ];
 
-    return parent::form($form, $form_state);
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    parent::validateForm($form, $form_state); // Always call parent first!
+
+    $raw_params_string = trim($form_state->getValue('custom_parameters_string') ?? '');
+
+    $custom_parameters = [];
+    if (!empty($raw_params_string)) {
+      $raw_array = explode("\n", $raw_params_string);
+      // Process and filter array
+      $custom_parameters = array_filter(array_map('trim', $raw_array));
+    }
+
+    // 1. CRITICAL: Store the processed array under a non-entity key.
+    $form_state->setValue('processed_custom_parameters', $custom_parameters);
+
+    // 2. CRITICAL: Unset the field's raw value to prevent the TypeError
+    // when core runs copyFormValuesToEntity() later.
+    $form_state->unsetValue('custom_parameters_string');
+  }
+
+  public function submitForm(array &$form, FormStateInterface $form_state): void {
+    // 1. Retrieve the processed array from the form state.
+    $custom_parameters = $form_state->getValue('processed_custom_parameters', []);
+
+    // 2. Set the property on the entity.
+    $this->entity->setCustomParameters($custom_parameters);
+    $this->addPassthroughParameters($this->entity->getUtmParameters());
+    // 3. Let the parent run its course, which will include save().
+    parent::submitForm($form, $form_state);
   }
 
   /**
@@ -113,6 +204,32 @@ final class UtmSetForm extends EntityForm {
     ]));
 
     $form_state->setRedirectUrl($utm_set->toUrl('collection'));
+  }
+
+  /**
+   * @param array $parameters
+   *   Array of key => value pairs of UTM parameters to be added to the passthrough keys.
+   *
+   * @return void
+   */
+  protected function addPassthroughParameters(array $parameters): void {
+    // Load the mutable configuration object for the module settings.
+    $config = $this->configFactory->getEditable('shortlink_manager.settings');
+
+    $passthrough_keys = $config->get('passthrough_parameters') ?? [];
+    $new_keys = [];
+    foreach ($parameters as $key => $value) {
+      $new_keys[] = $key;
+    }
+
+    $updated_keys = array_unique(array_merge($passthrough_keys, $new_keys));
+    $updated_keys = array_values($updated_keys);
+
+    // Save the updated configuration.
+    $config
+      ->set('passthrough_parameters', $updated_keys)
+      ->save();
+
   }
 
 }

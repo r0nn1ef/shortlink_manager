@@ -2,3 +2,9 @@ path_prefix: go
 redirect_status: 301
 available_entity_types: {}
 auto_generate_settings: {}
+passthrough_parameters:
+  - "utm_source"
+  - "utm_medium"
+  - "utm_campaign"
+  - "utm_term"
+  - "utm_content"

@@ -87,9 +87,6 @@ final class UtmParameterDefinitionForm extends ContentEntityForm {
 
       // Target the actual input element: [0]['value'] for a single-value text field.
       $element = &$form['field_parameter_value']['widget'][0]['value'];
-//      header('content-type: text/plain');
-//      var_dump($element);
-//      exit;
 
       // --- 1. Define available token types ---
       // These are the token groups the marketer is likely to need.

@@ -29,22 +29,22 @@ shortlink_manager.utm_set.*:
     utm_source:
       type: string
       label: 'UTM Source'
-    utm_medium: # Correctly aligned with utm_source
+    utm_medium:
       type: string
       label: 'UTM Medium'
-    utm_campaign: # Correctly aligned
+    utm_campaign:
       type: string
       label: 'UTM Campaign'
-    utm_term: # Correctly aligned
+    utm_term:
       type: string
       label: 'UTM Term'
-    utm_content: # Correctly aligned
+    utm_content:
       type: string
       label: 'UTM Content'
-    status: # Correctly aligned
+    status:
       type: boolean
       label: 'Enabled status'
-    custom_parameters: # Correctly aligned
+    custom_parameters:
       type: sequence
       label: 'Custom UTM Parameters'
       sequence:

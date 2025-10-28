@@ -88,3 +88,8 @@ shortlink_manager.settings:
                   sequence:
                     type: string
                     label: 'UTM Set ID'
+    passthrough_parameters:
+      type: sequence
+      label: 'Passthrough Parameters'
+      sequence:
+        type: string

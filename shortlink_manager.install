@@ -60,7 +60,7 @@ function shortlink_manager_uninstall($is_syncing) {
 /**
  * Update shortlink base table to include missing core entity fields.
  */
-function shortlink_manager_update_10501() {
+function shortlink_manager_update_10501(&$sandbox) {
   $schema = \Drupal::database()->schema();
 
   // UUID column.
@@ -107,7 +107,7 @@ function shortlink_manager_update_10501() {
 /**
  * Add the 'custom_parameters' property to the utm_set configuration entity.
  */
-function shortlink_manager_update_10502(): void {
+function shortlink_manager_update_10502(&$sandbox): void {
   // Get the entity type manager service.
   $entity_type_manager = \Drupal::entityTypeManager();
 
@@ -142,5 +142,21 @@ function shortlink_manager_update_10502(): void {
         $config_storage->write($config_name, $data);
       }
     }
+  }
+}
+
+function shorlink_manager_update_10503(&$sandbox): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+
+  if ($config->get('passthrough_parameters') === NULL) {
+    $default_passthrough = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+    ];
+    $config->set('passthrough_parameters', $default_passthrough);
+    $config->save();
   }
 }

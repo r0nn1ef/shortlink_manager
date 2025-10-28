@@ -217,8 +217,10 @@ final class UtmSetForm extends EntityForm implements ContainerInjectionInterface
     $config = $this->configFactory->getEditable('shortlink_manager.settings');
 
     $passthrough_keys = $config->get('passthrough_keys') ?? [];
-
-    $new_keys = array_keys($parameters);
+    $new_keys = [];
+    foreach ($parameters as $key => $value) {
+      $new_keys[] = $key;
+    }
 
     $updated_keys = array_unique(array_merge($passthrough_keys, $new_keys));
 

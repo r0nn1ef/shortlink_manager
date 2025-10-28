@@ -165,21 +165,11 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
   public function getUtmParameters(): array {
     $parameters = [];
 
-    if (!empty($this->getUtmSource())) {
-      $parameters['utm_source'] = $this->getUtmSource();
-    }
-    if (!empty($this->getUtmMedium())) {
-      $parameters['utm_medium'] = $this->getUtmMedium();
-    }
-    if (!empty($this->getUtmCampaign())) {
-      $parameters['utm_campaign'] = $this->getUtmCampaign();
-    }
-    if (!empty($this->getUtmTerm())) {
-      $parameters['utm_term'] = $this->getUtmTerm();
-    }
-    if (!empty($this->getUtmContent())) {
-      $parameters['utm_content'] = $this->getUtmContent();
-    }
+    $parameters['utm_source'] = $this->getUtmSource();
+    $parameters['utm_medium'] = $this->getUtmMedium();
+    $parameters['utm_campaign'] = $this->getUtmCampaign();
+    $parameters['utm_term'] = $this->getUtmTerm();
+    $parameters['utm_content'] = $this->getUtmContent();
 
     if(!empty($this->getCustomParameters())) {
       $custom_parameters = $this->getCustomParameters();

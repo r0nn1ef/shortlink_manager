@@ -6,9 +6,7 @@ namespace Drupal\shortlink_manager\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\shortlink_manager\UtmSetInterface;
-use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines the UTM Set config entity.
@@ -58,7 +56,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   },
  * )
  */
-final class UtmSet extends ConfigEntityBase implements UtmSetInterface, ContainerInjectionInterface {
+final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
 
   /**
    * The UTM set ID.
@@ -122,22 +120,14 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface, Containe
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler service.
    */
-  public function __construct(array $values, $entity_type, ModuleHandlerInterface $module_handler) {
+  public function __construct(array $values, $entity_type) {
     parent::__construct($values, $entity_type);
-    $this->moduleHandler = $module_handler;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container, array $values = []) {
-    // The entity ID 'utm_set' is passed to the constructor.
-    // The $values array (passed into create) is also passed to the constructor.
-    return new static(
-      $values,
-      'utm_set',
-      $container->get('module_handler')
-    );
+    /*
+     * This isn't the best way to do it, but using dependency injection
+     * introduces fatal errors because of the different interface signatures
+     * for EntityInterface and ContainerInjectionInterface.
+     */
+    $this->moduleHandler = \Drupal::getContainer()->get('module_handler');
   }
 
   /**

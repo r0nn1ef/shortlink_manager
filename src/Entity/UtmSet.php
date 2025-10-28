@@ -11,7 +11,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  * Defines the UTM Set config entity.
  *
  * @ConfigEntityType(
- *   id = "this",
+ *   id = "utm_set",
  *   label = @Translation("UTM Set"),
  *   label_collection = @Translation("UTM Sets"),
  *   label_singular = @Translation("utm set"),
@@ -28,13 +28,13 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *       "delete" = "Drupal\Core\Entity\EntityDeleteForm",
  *     },
  *   },
- *   config_prefix = "this",
- *   admin_permission = "administer this",
+ *   config_prefix = "utm_set",
+ *   admin_permission = "administer utm_set",
  *   links = {
  *     "collection" = "/admin/structure/utm-set",
  *     "add-form" = "/admin/structure/utm-set/add",
- *     "edit-form" = "/admin/structure/utm-set/{this}",
- *     "delete-form" = "/admin/structure/utm-set/{this}/delete",
+ *     "edit-form" = "/admin/structure/utm-set/{utm_set}",
+ *     "delete-form" = "/admin/structure/utm-set/{utm_set}/delete",
  *   },
  *   entity_keys = {
  *     "id" = "id",
@@ -50,6 +50,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *     "utm_campaign",
  *     "utm_term",
  *     "utm_content",
+ *     "custom_parameters",
  *     "status",
  *   },
  * )
@@ -97,10 +98,15 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
   protected string $utm_content = '';
 
   /**
+   * @var array Custom UTM parameters in the form of 'key' => 'value'.
+   */
+  protected array $custom_parameters = [];
+
+  /**
    * {@inheritDoc}
    */
   public function getStatus(): bool {
-    return $this->status;
+    return (bool) $this->status;
   }
 
   /**
@@ -136,6 +142,21 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    */
   public function getUtmContent(): string {
     return $this->utm_content;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCustomParameters(): array {
+    return $this->custom_parameters;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setCustomParameters(array $custom_parameters): self {
+    $this->set('custom_parameters', $custom_parameters);
+    return $this;
   }
 
   /**

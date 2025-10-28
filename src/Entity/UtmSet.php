@@ -6,6 +6,9 @@ namespace Drupal\shortlink_manager\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\shortlink_manager\UtmSetInterface;
+use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines the UTM Set config entity.
@@ -55,7 +58,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *   },
  * )
  */
-final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
+final class UtmSet extends ConfigEntityBase implements UtmSetInterface, ContainerInjectionInterface {
 
   /**
    * The UTM set ID.
@@ -101,6 +104,41 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    * @var array Custom UTM parameters in the form of 'key' => 'value'.
    */
   protected array $custom_parameters = [];
+
+  /**
+   * The module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
+   * Constructs a new UtmSet object.
+   *
+   * @param array $values
+   *   An array of settings.
+   * @param string $entity_type
+   *   The entity type ID.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   The module handler service.
+   */
+  public function __construct(array $values, $entity_type, ModuleHandlerInterface $module_handler) {
+    parent::__construct($values, $entity_type);
+    $this->moduleHandler = $module_handler;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $values = []) {
+    // The entity ID 'utm_set' is passed to the constructor.
+    // The $values array (passed into create) is also passed to the constructor.
+    return new static(
+      $values,
+      'utm_set',
+      $container->get('module_handler')
+    );
+  }
 
   /**
    * {@inheritDoc}
@@ -190,6 +228,16 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
         // TODO: Add logging/error handling for misformatted parameters here.
       }
     }
+
+    /*
+     * Allow other modules to modify the parameters prior to sending them back
+     * to the calling code.
+     */
+    $this->moduleHandler->alter(
+      'shortlink_manager_utm_parameters',
+      $parameters,
+      $this
+    );
 
     return $parameters;
   }

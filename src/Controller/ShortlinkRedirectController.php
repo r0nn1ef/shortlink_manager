@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\Utility\Token;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -74,10 +75,13 @@ final class ShortlinkRedirectController extends ControllerBase {
    * @param string $slug
    *   The shortlink slug.
    *
-   * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   * @return \Symfony\Component\HttpFoundation\Response
    *   The redirect response.
+   *
+   * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+   *
    */
-  public function redirectShortlink(string $slug): RedirectResponse {
+  public function redirectShortlink(string $slug): Response {
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
@@ -176,8 +180,7 @@ final class ShortlinkRedirectController extends ControllerBase {
         if (empty($value)) {
           continue;
         }
-        $new_value = $this->token->replace($value, $data);
-        \Drupal::logger('ShortlinkRedirectController')->debug('new_value: ' . $new_value);
+        $new_value = $process_token($value, $data);
         $sanitized_value = preg_replace($pattern, $replacement, $new_value);
         $sanitized_value = preg_replace($double_underscore_pattern, '_', $sanitized_value);
         $sanitized_value = trim($sanitized_value, '_');

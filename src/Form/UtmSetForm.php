@@ -216,7 +216,7 @@ final class UtmSetForm extends EntityForm implements ContainerInjectionInterface
     // Load the mutable configuration object for the module settings.
     $config = $this->configFactory->getEditable('shortlink_manager.settings');
 
-    $passthrough_keys = $config->get('passthrough_keys') ?? [];
+    $passthrough_keys = $config->get('passthrough_parameters') ?? [];
     $new_keys = [];
     foreach ($parameters as $key => $value) {
       $new_keys[] = $key;
@@ -227,7 +227,7 @@ final class UtmSetForm extends EntityForm implements ContainerInjectionInterface
 
     // Save the updated configuration.
     $config
-      ->set('passthrough_keys', $updated_keys)
+      ->set('passthrough_parameters', $updated_keys)
       ->save();
 
   }

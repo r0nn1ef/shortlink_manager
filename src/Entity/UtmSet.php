@@ -6,6 +6,7 @@ namespace Drupal\shortlink_manager\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\shortlink_manager\UtmSetInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 
 /**
  * Defines the UTM Set config entity.
@@ -50,6 +51,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  *     "utm_campaign",
  *     "utm_term",
  *     "utm_content",
+ *     "custom_parameters",
  *     "status",
  *   },
  * )
@@ -97,10 +99,42 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
   protected string $utm_content = '';
 
   /**
+   * @var array Custom UTM parameters in the form of 'key' => 'value'.
+   */
+  protected array $custom_parameters = [];
+
+  /**
+   * The module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
+   * Constructs a new UtmSet object.
+   *
+   * @param array $values
+   *   An array of settings.
+   * @param string $entity_type
+   *   The entity type ID.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   The module handler service.
+   */
+  public function __construct(array $values, $entity_type) {
+    parent::__construct($values, $entity_type);
+    /*
+     * This isn't the best way to do it, but using dependency injection
+     * introduces fatal errors because of the different interface signatures
+     * for EntityInterface and ContainerInjectionInterface.
+     */
+    $this->moduleHandler = \Drupal::getContainer()->get('module_handler');
+  }
+
+  /**
    * {@inheritDoc}
    */
   public function getStatus(): bool {
-    return $this->status;
+    return (bool) $this->status;
   }
 
   /**
@@ -136,6 +170,66 @@ final class UtmSet extends ConfigEntityBase implements UtmSetInterface {
    */
   public function getUtmContent(): string {
     return $this->utm_content;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCustomParameters(): array {
+    return $this->custom_parameters;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setCustomParameters(array $custom_parameters): self {
+    $this->set('custom_parameters', $custom_parameters);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getUtmParameters(): array {
+    $parameters = [];
+
+    $parameters['utm_source'] = $this->getUtmSource();
+    $parameters['utm_medium'] = $this->getUtmMedium();
+    $parameters['utm_campaign'] = $this->getUtmCampaign();
+    $parameters['utm_term'] = $this->getUtmTerm();
+    $parameters['utm_content'] = $this->getUtmContent();
+
+    if(!empty($this->getCustomParameters())) {
+      $custom_parameters = $this->getCustomParameters();
+      foreach ($custom_parameters as $parameter_string) {
+        $matches = [];
+        // Regex: Matches everything before the FIRST colon (the key) and
+        // everything after it (the value).
+        $pattern = '/^([^:]+):(.+)$/';
+
+        if (preg_match($pattern, $parameter_string, $matches)) {
+          $key = trim($matches[1]);
+          $value = trim($matches[2]);
+          // Assign the split key/value to the parameters.
+          // NOTE: The token replacement for $value must happen later
+          // in your code!
+          $parameters[$key] = $value;
+        }
+        // TODO: Add logging/error handling for misformatted parameters here.
+      }
+    }
+
+    /*
+     * Allow other modules to modify the parameters prior to sending them back
+     * to the calling code.
+     */
+    $this->moduleHandler->alter(
+      'shortlink_manager_utm_parameters',
+      $parameters,
+      $this
+    );
+
+    return $parameters;
   }
 
 }

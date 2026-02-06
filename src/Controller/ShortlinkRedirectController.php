@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\Utility\Token;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -74,10 +75,13 @@ final class ShortlinkRedirectController extends ControllerBase {
    * @param string $slug
    *   The shortlink slug.
    *
-   * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   * @return \Symfony\Component\HttpFoundation\Response
    *   The redirect response.
+   *
+   * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+   *
    */
-  public function redirectShortlink(string $slug): RedirectResponse {
+  public function redirectShortlink(string $slug): Response {
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
@@ -154,7 +158,7 @@ final class ShortlinkRedirectController extends ControllerBase {
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
-      $query_params = [];
+      $query_params = $utm_set->getUtmParameters();
 
       // Define a helper function (closure) to process tokens.
       $process_token = function (string $raw_value, array $data, array $options = []) {
@@ -166,25 +170,6 @@ final class ShortlinkRedirectController extends ControllerBase {
         return $raw_value;
       };
 
-      if (!empty($utm_set->getUtmSource())) {
-        $query_params['utm_source'] = $utm_set->getUtmSource();
-      }
-      if (!empty($utm_set->getUtmMedium())) {
-        $query_params['utm_medium'] = $utm_set->getUtmMedium();
-      }
-      if (!empty($utm_set->getUtmCampaign())) {
-        $query_params['utm_campaign'] = $utm_set->getUtmCampaign();
-      }
-      if (!empty($utm_set->getUtmTerm())) {
-        $query_params['utm_term'] = $utm_set->getUtmTerm();
-      }
-      if (!empty($utm_set->getUtmContent())) {
-        $query_params['utm_content'] = $utm_set->getUtmContent();
-      }
-      else {
-        $query_params['utm_content'] = $slug;
-      }
-
       /*
        * Used to clean up the token replacements if needed.
        */
@@ -192,8 +177,7 @@ final class ShortlinkRedirectController extends ControllerBase {
       $replacement = '_';
       $double_underscore_pattern = '/_+/';
       foreach ($query_params as $key => $value) {
-
-        if (empty($query_params[$key])) {
+        if (empty($value)) {
           continue;
         }
         $new_value = $process_token($value, $data);
@@ -211,10 +195,15 @@ final class ShortlinkRedirectController extends ControllerBase {
     $redirect_status = $config->get('redirect_status') ?: 301;
 
     if ( $destination_url->isExternal() ) {
-      return new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
     } else {
-      return new RedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new RedirectResponse($destination_url->toString(), (int) $redirect_status);
     }
+
+    // This is the "Invisibility Cloak" for Googlebot
+    $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+    return $response;
   }
 
 }

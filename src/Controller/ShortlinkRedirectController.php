@@ -195,10 +195,15 @@ final class ShortlinkRedirectController extends ControllerBase {
     $redirect_status = $config->get('redirect_status') ?: 301;
 
     if ( $destination_url->isExternal() ) {
-      return new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
     } else {
-      return new RedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new RedirectResponse($destination_url->toString(), (int) $redirect_status);
     }
+
+    // This is the "Invisibility Cloak" for Googlebot
+    $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+    return $response;
   }
 
 }

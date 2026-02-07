@@ -11,6 +11,9 @@ dependencies:
     - views_data_export
   enforced:
     module:
+      - csv_serialization
+      - rest
+      - serialization
       - shortlink_manager
       - views_data_export
 

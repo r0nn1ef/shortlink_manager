@@ -111,6 +111,11 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
+    $current_count = (int) $shortlink->get('click_count')->value;
+    $shortlink->set('click_count', $current_count + 1);
+    $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
+    $shortlink->save();
+
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {
       $destination_url_string = $shortlink->getDestinationOverride();

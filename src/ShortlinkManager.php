@@ -51,31 +51,40 @@ class ShortlinkManager {
    * @return string
    *   The generated shortlink path.
    */
-  public function generateShortlinkPath(int $maxlength = 28): string {
+  public function generateShortlinkPath(int $length = 6): string {
     $config = $this->configFactory->get('shortlink_manager.settings');
     $path_prefix = $config->get('path_prefix') ?? 'go';
 
-    if ($maxlength <= 5) {
-      $maxlength = 28;
+    if ($length <= 6) {
+      $length = 6;
     }
 
-    $string_length = rand(5, $maxlength);
-
-    //
     /*
      * Define the alphabet of characters to use. Ambiguous characters
-     * i, l, I, L, o, O are removed because they are commonly confused.
+     * i, l, I, L, o, O, 0 are removed because they are commonly confused.
      */
-    $alphabet = '0123456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ-_';
+    $alphabet = '123456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ-_';
     $alphabet_length = strlen($alphabet);
+
+    // Safety counter to prevent infinite loops
+    $max_attempts = 100;
+    $attempts = 0;
 
     // Loop until a unique path is found.
     do {
       $random_string = '';
-      for ($i = 0; $i < $string_length; $i++) {
+      for ($i = 0; $i < $length; $i++) {
         $random_string .= $alphabet[random_int(0, $alphabet_length - 1)];
       }
       $path = $path_prefix . '/' . $random_string;
+
+      $attempts++;
+      if ($attempts >= $max_attempts) {
+        $this->logger->error('Failed to generate unique shortlink path after @attempts attempts', [
+          '@attempts' => $max_attempts,
+        ]);
+        throw new \RuntimeException('Unable to generate unique shortlink path after ' . $max_attempts . ' attempts. Please contact administrator.');
+      }
     } while ($this->pathExists($path));
 
     return $path;

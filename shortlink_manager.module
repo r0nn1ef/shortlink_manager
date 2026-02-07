@@ -84,8 +84,8 @@ function shortlink_manager_entity_delete(EntityInterface $entity): void {
   if (!($entity instanceof ContentEntityBase)) {
     return;
   }
-  $shortlinkManager = \Drupal::service('shortlink_manager.shortlink_manager');
-  $shortlinkManager->deleteEntity($entity);
+  \Drupal::service('shortlink_manager.shortlink_manager')
+    ->deleteEntityShortlinks($entity);
 }
 
 /**

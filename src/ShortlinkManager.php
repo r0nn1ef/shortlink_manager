@@ -61,8 +61,12 @@ class ShortlinkManager {
 
     $string_length = rand(5, $maxlength);
 
-    // Define the alphabet of characters to use.
-    $alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_';
+    //
+    /*
+     * Define the alphabet of characters to use. Ambiguous characters
+     * i, l, I, L, o, O are removed because they are commonly confused.
+     */
+    $alphabet = '0123456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ-_';
     $alphabet_length = strlen($alphabet);
 
     // Loop until a unique path is found.

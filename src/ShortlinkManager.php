@@ -6,7 +6,9 @@ namespace Drupal\shortlink_manager;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Messenger\MessengerInterface;
 
 /**
  * Service to manage shortlinks.
@@ -20,14 +22,19 @@ class ShortlinkManager {
    *
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
-  protected $configFactory;
+  protected ConfigFactoryInterface $configFactory;
 
   /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityTypeManager;
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  /**
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected MessengerInterface $messenger;
 
   /**
    * Constructs a ShortlinkManager service.
@@ -37,9 +44,10 @@ class ShortlinkManager {
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, MessengerInterface $messenger) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
+    $this->messenger = $messenger;
   }
 
   /**
@@ -88,6 +96,32 @@ class ShortlinkManager {
     } while ($this->pathExists($path));
 
     return $path;
+  }
+
+  /**
+   * Delete shortlink entities for the specific content entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *
+   * @return void
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
+  public function deleteEntityShortlinks(EntityInterface $entity): void {
+    $type = $entity->getEntityTypeId();
+    $storage = $this->entityTypeManager->getStorage($type);
+    $query = $this->entityTypeManager
+      ->getStorage($entity->getEntityTypeId())
+      ->getQuery()
+      ->condition('target_entity_type', $entity->getEntityTypeId())
+      ->condition('target_entity_id', $entity->id());
+    $results = $query
+      ->accessCheck(FALSE)
+      ->execute();
+    $entities = $storage->loadMultiple($results);
+    $storage->delete($entities);
+    $this->messenger->addStatus('Deleted @count shortlinks for entity (@type) @name.', ['@count' => count($entities), '@type' => $entity->getEntityTypeId(), '@name' => $entity->getLabel()]);
   }
 
   /**

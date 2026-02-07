@@ -82,6 +82,7 @@ final class ShortlinkRedirectController extends ControllerBase {
    *
    */
   public function redirectShortlink(string $slug): Response {
+    die('HERE');
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
@@ -99,6 +100,8 @@ final class ShortlinkRedirectController extends ControllerBase {
       ->condition('status', TRUE)
       ->accessCheck(FALSE)
       ->execute();
+
+
 
     if (empty($shortlink_ids)) {
       throw new NotFoundHttpException();
@@ -146,6 +149,10 @@ final class ShortlinkRedirectController extends ControllerBase {
 
       $destination_entity = $this->entityTypeManager->getStorage($entity_type_id)->load($entity_id);
 
+      header('content-type:text/plain');
+      var_dump( $destination_entity );
+      exit;
+
       if (!$destination_entity) {
         throw new NotFoundHttpException();
       }
@@ -163,7 +170,7 @@ final class ShortlinkRedirectController extends ControllerBase {
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
-      $query_params = $utm_set->getUtmParameters();
+      $query_params = is_null($utm_set) ? [] : $utm_set->getUtmParameters();
 
       // Define a helper function (closure) to process tokens.
       $process_token = function (string $raw_value, array $data, array $options = []) {

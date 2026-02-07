@@ -1,9 +1,10 @@
 langcode: en
 status: true
 dependencies:
+  module:
+    - shortlink_manager
   enforced:
     module:
-      - shortlink_manager
       - views_data_export
       - rest
       - csv_serialization

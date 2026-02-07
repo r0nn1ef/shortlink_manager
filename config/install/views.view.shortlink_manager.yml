@@ -9,6 +9,7 @@ dependencies:
     - shortlink_manager
     - user
     - views_data_export
+    - options
   enforced:
     module:
       - csv_serialization
@@ -16,7 +17,7 @@ dependencies:
       - serialization
       - shortlink_manager
       - views_data_export
-
+      - options
 id: shortlink_manager
 label: 'Shortlink Manager'
 module: views

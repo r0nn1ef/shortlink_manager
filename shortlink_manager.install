@@ -198,3 +198,43 @@ function shortlink_manager_update_10504(&$sandbox) {
   return t('Added click tracking fields to shortlink entity.');
 }
 
+/**
+ * Add default data to the new 'field_example' for existing nodes.
+ */
+function shortlink_manager_update_10505(&$sandbox) {
+  $storage = \Drupal::entityTypeManager()->getStorage('shortlink');
+
+  // 1. Initialization
+  if (!isset($sandbox['total'])) {
+    $nids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->execute();
+
+    $sandbox['total'] = count($nids);
+    $sandbox['entities_to_process'] = array_values($nids);
+    $sandbox['current'] = 0;
+  }
+
+  // 2. Define your chunk size
+  $limit = 50;
+  $chunk = array_slice($sandbox['entities_to_process'], $sandbox['current'], $limit);
+
+  // 3. Process the data
+  foreach ($chunk as $eid) {
+    $entity = $storage->load($eid);
+    if ($entity) {
+      $entity->set('click_count', 0);
+      $entity->save();
+    }
+    $sandbox['current']++;
+  }
+
+  // 4. Update progress
+  $sandbox['#finished'] = ($sandbox['current'] >= $sandbox['total'])
+    ? 1
+    : ($sandbox['current'] / $sandbox['total']);
+
+  if ($sandbox['#finished'] === 1) {
+    return t('Finished updating @total shortlinks.', ['@total' => $sandbox['total']]);
+  }
+}

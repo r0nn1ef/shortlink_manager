@@ -166,6 +166,9 @@ function shortlink_manager_update_10503(&$sandbox): void {
   }
 }
 
+/**
+ * Add new base fields Click Count and Last Accessed
+ */
 function shortlink_manager_update_10504(&$sandbox) {
   $field_storage_definition = \Drupal::service('entity_field.manager')
     ->getFieldStorageDefinitions('shortlink');

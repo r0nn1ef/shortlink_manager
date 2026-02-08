@@ -82,7 +82,6 @@ final class ShortlinkRedirectController extends ControllerBase {
    *
    */
   public function redirectShortlink(string $slug): Response {
-    die('HERE');
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
@@ -100,8 +99,6 @@ final class ShortlinkRedirectController extends ControllerBase {
       ->condition('status', TRUE)
       ->accessCheck(FALSE)
       ->execute();
-
-
 
     if (empty($shortlink_ids)) {
       throw new NotFoundHttpException();
@@ -148,10 +145,6 @@ final class ShortlinkRedirectController extends ControllerBase {
       $entity_id = $shortlink->getTargetEntityId();
 
       $destination_entity = $this->entityTypeManager->getStorage($entity_type_id)->load($entity_id);
-
-      header('content-type:text/plain');
-      var_dump( $destination_entity );
-      exit;
 
       if (!$destination_entity) {
         throw new NotFoundHttpException();

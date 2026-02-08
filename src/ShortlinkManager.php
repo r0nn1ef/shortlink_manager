@@ -109,10 +109,9 @@ class ShortlinkManager {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function deleteEntityShortlinks(EntityInterface $entity): void {
-    $type = $entity->getEntityTypeId();
-    $storage = $this->entityTypeManager->getStorage($type);
+    $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
     $query = $this->entityTypeManager
-      ->getStorage($entity->getEntityTypeId())
+      ->getStorage('shortlink')
       ->getQuery()
       ->condition('target_entity_type', $entity->getEntityTypeId())
       ->condition('target_entity_id', $entity->id());
@@ -121,7 +120,10 @@ class ShortlinkManager {
       ->execute();
     $entities = $storage->loadMultiple($results);
     $storage->delete($entities);
-    $this->messenger->addStatus('Deleted @count shortlinks for entity (@type) @name.', ['@count' => count($entities), '@type' => $entity->getEntityTypeId(), '@name' => $entity->getLabel()]);
+    $count_string = $this->formatPlural(count($results), '1 shortlink', '@count shortlinks');
+    $this->messenger->addStatus($this->t('Deleted :count_string for %name.',
+      [':count_string' => $count_string, '%name' => $entity->label()]
+    ));
   }
 
   /**

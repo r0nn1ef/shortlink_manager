@@ -118,6 +118,10 @@ class ShortlinkManager {
     $results = $query
       ->accessCheck(FALSE)
       ->execute();
+    // Nothing to do.
+    if ( count($results) === 0 ) {
+      return;
+    }
     $entities = $storage->loadMultiple($results);
     $storage->delete($entities);
     $count_string = $this->formatPlural(count($results), '1 shortlink', '@count shortlinks');

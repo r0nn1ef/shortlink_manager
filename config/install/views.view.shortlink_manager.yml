@@ -1,14 +1,13 @@
-uuid: e5e547a7-59fd-4dfa-b59b-8e35b3a34462
 langcode: en
 status: true
 dependencies:
   module:
-    - csv_serialization
-    - rest
-    - serialization
     - shortlink_manager
-    - user
-    - views_data_export
+  enforced:
+    module:
+      - views_data_export
+      - rest
+      - csv_serialization
 id: shortlink_manager
 label: 'Shortlink Manager'
 module: views
@@ -376,10 +375,11 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          type: yes-no
           type_custom_true: ''
           type_custom_false: ''
           not: false
+          settings:
+            format: yes-no
         nothing:
           id: nothing
           table: views
@@ -496,10 +496,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
-              blogger: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -540,10 +536,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
-              blogger: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -584,10 +576,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
-              blogger: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -628,10 +616,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
-              blogger: '0'
             placeholder: ''
           is_grouped: false
           group_info:
@@ -672,10 +656,6 @@ display:
             multiple: false
             remember_roles:
               authenticated: authenticated
-              anonymous: '0'
-              content_editor: '0'
-              administrator: '0'
-              blogger: '0'
           is_grouped: false
           group_info:
             label: ''
@@ -715,6 +695,7 @@ display:
           empty_table: false
           caption: ''
           description: ''
+          class: ''
       row:
         type: fields
       query:

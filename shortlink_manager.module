@@ -31,7 +31,6 @@ function shortlink_manager_theme(): array {
 function shortlink_manager_entity_insert(EntityInterface $entity): void {
   // Only operate on content entities.
   if (!($entity instanceof ContentEntityBase)) {
-    \Drupal::logger('shortlink_manager')->notice('Entity is not instance of ContentEntityBase.');
     return;
   }
 
@@ -79,6 +78,14 @@ function shortlink_manager_entity_insert(EntityInterface $entity): void {
     }
   }
 
+}
+
+function shortlink_manager_entity_delete(EntityInterface $entity): void {
+  if (!($entity instanceof ContentEntityBase)) {
+    return;
+  }
+  \Drupal::service('shortlink_manager.shortlink_manager')
+    ->deleteEntityShortlinks($entity);
 }
 
 /**

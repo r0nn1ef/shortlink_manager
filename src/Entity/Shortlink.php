@@ -22,6 +22,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  * label_collection = @Translation("Shortlinks"),
  * handlers = {
  * "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *  "views_data" = "Drupal\views\EntityViewsData",
  * "list_builder" = "Drupal\shortlink_manager\ShortlinkListBuilder",
  * "form" = {
  * "default" = "Drupal\shortlink_manager\Form\ShortlinkForm",
@@ -299,6 +300,27 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
         'weight' => 5,
       ])
       ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['click_count'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Click Count'))
+      ->setDescription(t('Number of times this shortlink has been accessed.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['last_accessed'] = BaseFieldDefinition::create('timestamp')
+      ->setLabel(t('Last Accessed'))
+      ->setDescription(t('When this shortlink was last accessed.'))
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'timestamp',
+        'weight' => 11,
+      ])
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['target_entity_type'] = BaseFieldDefinition::create('string')

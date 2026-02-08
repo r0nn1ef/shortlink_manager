@@ -7,6 +7,8 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Field\BaseFieldDefinition;
+
 /**
  * Implements hook_schema().
  *
@@ -163,3 +165,36 @@ function shortlink_manager_update_10503(&$sandbox): void {
     $config->save();
   }
 }
+
+function shortlink_manager_update_10504(&$sandbox) {
+  $field_storage_definition = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('shortlink');
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  // Add click_count field
+  $click_count = BaseFieldDefinition::create('integer')
+    ->setLabel(t('Click Count'))
+    ->setDescription(t('Number of times this shortlink has been accessed.'))
+    ->setDefaultValue(0)
+    ->setDisplayOptions('view', [
+      'label' => 'inline',
+      'type' => 'number_integer',
+      'weight' => 10,
+    ]);
+  $update_manager->installFieldStorageDefinition('click_count', 'shortlink', 'shortlink_manager', $click_count);
+
+  // Add last_accessed field
+  $last_accessed = BaseFieldDefinition::create('timestamp')
+    ->setLabel(t('Last Accessed'))
+    ->setDescription(t('When this shortlink was last accessed.'))
+    ->setDisplayOptions('view', [
+      'label' => 'inline',
+      'type' => 'timestamp',
+      'weight' => 11,
+    ]);
+  $update_manager->installFieldStorageDefinition('last_accessed', 'shortlink', 'shortlink_manager', $last_accessed);
+
+  return t('Added click tracking fields to shortlink entity.');
+}
+

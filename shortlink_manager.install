@@ -7,6 +7,8 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Field\BaseFieldDefinition;
+
 /**
  * Implements hook_schema().
  *
@@ -161,5 +163,81 @@ function shortlink_manager_update_10503(&$sandbox): void {
     ];
     $config->set('passthrough_parameters', $default_passthrough);
     $config->save();
+  }
+}
+
+/**
+ * Add new base fields Click Count and Last Accessed
+ */
+function shortlink_manager_update_10504(&$sandbox) {
+  $field_storage_definition = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('shortlink');
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  // Add click_count field
+  $click_count = BaseFieldDefinition::create('integer')
+    ->setLabel(t('Click Count'))
+    ->setDescription(t('Number of times this shortlink has been accessed.'))
+    ->setDefaultValue(0)
+    ->setDisplayOptions('view', [
+      'label' => 'inline',
+      'type' => 'number_integer',
+      'weight' => 10,
+    ]);
+  $update_manager->installFieldStorageDefinition('click_count', 'shortlink', 'shortlink_manager', $click_count);
+
+  // Add last_accessed field
+  $last_accessed = BaseFieldDefinition::create('timestamp')
+    ->setLabel(t('Last Accessed'))
+    ->setDescription(t('When this shortlink was last accessed.'))
+    ->setDisplayOptions('view', [
+      'label' => 'inline',
+      'type' => 'timestamp',
+      'weight' => 11,
+    ]);
+  $update_manager->installFieldStorageDefinition('last_accessed', 'shortlink', 'shortlink_manager', $last_accessed);
+
+  return t('Added click tracking fields to shortlink entity.');
+}
+
+/**
+ * Add default data to the new 'field_example' for existing nodes.
+ */
+function shortlink_manager_update_10505(&$sandbox) {
+  $storage = \Drupal::entityTypeManager()->getStorage('shortlink');
+
+  // 1. Initialization
+  if (!isset($sandbox['total'])) {
+    $nids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->execute();
+
+    $sandbox['total'] = count($nids);
+    $sandbox['entities_to_process'] = array_values($nids);
+    $sandbox['current'] = 0;
+  }
+
+  // 2. Define your chunk size
+  $limit = 50;
+  $chunk = array_slice($sandbox['entities_to_process'], $sandbox['current'], $limit);
+
+  // 3. Process the data
+  foreach ($chunk as $eid) {
+    $entity = $storage->load($eid);
+    if ($entity) {
+      $entity->set('click_count', 0);
+      $entity->save();
+    }
+    $sandbox['current']++;
+  }
+
+  // 4. Update progress
+  $sandbox['#finished'] = ($sandbox['current'] >= $sandbox['total'])
+    ? 1
+    : ($sandbox['current'] / $sandbox['total']);
+
+  if ($sandbox['#finished'] === 1) {
+    return t('Finished updating @total shortlinks.', ['@total' => $sandbox['total']]);
   }
 }

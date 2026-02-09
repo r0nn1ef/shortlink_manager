@@ -5,6 +5,7 @@ services:
     arguments:
       - '@config.factory'
       - '@entity_type.manager'
+      - '@messenger'
   shortlink_manager.route_subscriber:
     class: Drupal\shortlink_manager\Routing\ShortlinkRouteSubscriber
     arguments: [ '@config.factory' ]

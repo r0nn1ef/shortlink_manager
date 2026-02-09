@@ -111,6 +111,11 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
+    $current_count = (int) $shortlink->get('click_count')->value;
+    $shortlink->set('click_count', $current_count + 1);
+    $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
+    $shortlink->save();
+
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {
       $destination_url_string = $shortlink->getDestinationOverride();
@@ -158,7 +163,7 @@ final class ShortlinkRedirectController extends ControllerBase {
     if ($shortlink->hasUtmSet()) {
       /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
       $utm_set = $shortlink->getUtmSet();
-      $query_params = $utm_set->getUtmParameters();
+      $query_params = is_null($utm_set) ? [] : $utm_set->getUtmParameters();
 
       // Define a helper function (closure) to process tokens.
       $process_token = function (string $raw_value, array $data, array $options = []) {

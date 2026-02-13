@@ -22,7 +22,253 @@ function shortlink_manager_theme(): array {
       ],
       'template' => 'shortlink-block',
     ],
+    'shortlink_manager_dashboard' => [
+      'variables' => [
+        'total_clicks' => 0,
+        'top_shortlinks' => [],
+        'recent_clicks' => [],
+      ],
+      'template' => 'shortlink-dashboard',
+    ],
   ];
+}
+
+/**
+ * Implements hook_token_info().
+ */
+function shortlink_manager_token_info(): array {
+  $types = [
+    'shortlink' => [
+      'name' => t('Shortlink'),
+      'description' => t('Tokens related to shortlinks.'),
+      'needs-data' => 'shortlink',
+    ],
+  ];
+
+  $tokens = [
+    'shortlink' => [
+      'url' => [
+        'name' => t('URL'),
+        'description' => t('The full absolute URL of the shortlink.'),
+      ],
+      'path' => [
+        'name' => t('Path'),
+        'description' => t('The shortlink path (e.g., go/xE4_iqh).'),
+      ],
+      'label' => [
+        'name' => t('Label'),
+        'description' => t('The label of the shortlink.'),
+      ],
+      'click-count' => [
+        'name' => t('Click count'),
+        'description' => t('The number of times this shortlink has been clicked.'),
+      ],
+    ],
+  ];
+
+  // Add shortlink as a chained token for entity types.
+  $entity_types = \Drupal::config('shortlink_manager.settings')->get('available_entity_types') ?: [];
+  foreach ($entity_types as $entity_type_id) {
+    $tokens[$entity_type_id]['shortlink'] = [
+      'name' => t('Shortlink'),
+      'description' => t('The first shortlink associated with this entity.'),
+      'type' => 'shortlink',
+    ];
+  }
+
+  return [
+    'types' => $types,
+    'tokens' => $tokens,
+  ];
+}
+
+/**
+ * Implements hook_tokens().
+ */
+function shortlink_manager_tokens(string $type, array $tokens, array $data, array $options, \Drupal\Core\Render\BubbleableMetadata $bubbleable_metadata): array {
+  $replacements = [];
+
+  // Handle direct shortlink tokens.
+  if ($type === 'shortlink' && !empty($data['shortlink'])) {
+    $shortlink = $data['shortlink'];
+    foreach ($tokens as $name => $original) {
+      switch ($name) {
+        case 'url':
+          $path = $shortlink->getPath();
+          $replacements[$original] = \Drupal\Core\Url::fromUserInput('/' . $path, ['absolute' => TRUE])->toString();
+          break;
+
+        case 'path':
+          $replacements[$original] = $shortlink->getPath();
+          break;
+
+        case 'label':
+          $replacements[$original] = $shortlink->label();
+          break;
+
+        case 'click-count':
+          $replacements[$original] = $shortlink->get('click_count')->value ?? '0';
+          break;
+      }
+    }
+  }
+
+  // Handle chained tokens from entity types (e.g., [node:shortlink:url]).
+  $entity_types = \Drupal::config('shortlink_manager.settings')->get('available_entity_types') ?: [];
+  if (in_array($type, $entity_types) && !empty($data[$type])) {
+    $entity = $data[$type];
+    $shortlink_tokens = \Drupal::token()->findWithPrefix($tokens, 'shortlink');
+
+    if (!empty($shortlink_tokens)) {
+      /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlink_manager */
+      $shortlink_manager = \Drupal::service('shortlink_manager.shortlink_manager');
+      $shortlinks = $shortlink_manager->getShortlinksForEntity($entity->getEntityTypeId(), (string) $entity->id());
+
+      if (!empty($shortlinks)) {
+        $shortlink = reset($shortlinks);
+        $replacements += \Drupal::token()->generate('shortlink', $shortlink_tokens, ['shortlink' => $shortlink], $options, $bubbleable_metadata);
+      }
+    }
+  }
+
+  return $replacements;
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Adds a shortlink preview to entity edit forms for configured entity types.
+ */
+function shortlink_manager_form_alter(array &$form, \Drupal\Core\Form\FormStateInterface $form_state, string $form_id): void {
+  $form_object = $form_state->getFormObject();
+  if (!$form_object instanceof \Drupal\Core\Entity\ContentEntityFormInterface) {
+    return;
+  }
+
+  $entity = $form_object->getEntity();
+  if (!$entity instanceof ContentEntityBase || $entity->isNew()) {
+    return;
+  }
+
+  $config = \Drupal::config('shortlink_manager.settings');
+  $entity_type_id = $entity->getEntityTypeId();
+  $bundle_id = $entity->bundle();
+
+  // Only show for entity types configured for auto-generation.
+  $enabled = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.enabled');
+  if (!$enabled) {
+    return;
+  }
+
+  /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlink_manager */
+  $shortlink_manager = \Drupal::service('shortlink_manager.shortlink_manager');
+  $shortlinks = $shortlink_manager->getShortlinksForEntity($entity_type_id, (string) $entity->id());
+
+  $form['shortlink_preview'] = [
+    '#type' => 'details',
+    '#title' => t('Shortlinks'),
+    '#group' => 'advanced',
+    '#weight' => 100,
+    '#open' => TRUE,
+    '#attached' => [
+      'library' => ['shortlink_manager/clipboard'],
+    ],
+  ];
+
+  if (empty($shortlinks)) {
+    $form['shortlink_preview']['message'] = [
+      '#markup' => '<p>' . t('A shortlink will be automatically generated when this content is saved.') . '</p>',
+    ];
+    return;
+  }
+
+  $items = [];
+  foreach ($shortlinks as $shortlink) {
+    $path = $shortlink->getPath();
+    $full_url = \Drupal\Core\Url::fromUserInput('/' . $path, ['absolute' => TRUE])->toString();
+    $utm_label = $shortlink->hasUtmSet() && $shortlink->getUtmSet()
+      ? $shortlink->getUtmSet()->label()
+      : t('No UTM set');
+    $click_count = $shortlink->get('click_count')->value ?? 0;
+
+    $items[] = [
+      '#markup' => '<div class="shortlink-preview-item">'
+        . '<a href="' . $full_url . '">' . $full_url . '</a> '
+        . '<button class="shortlink-copy-btn" data-shortlink-url="' . $full_url . '" type="button">' . t('Copy') . '</button>'
+        . '<br><small>' . t('UTM: @utm | Clicks: @clicks', ['@utm' => $utm_label, '@clicks' => $click_count]) . '</small>'
+        . '</div>',
+    ];
+  }
+
+  $form['shortlink_preview']['links'] = [
+    '#theme' => 'item_list',
+    '#items' => $items,
+  ];
+}
+
+/**
+ * Implements hook_views_data_alter().
+ */
+function shortlink_manager_views_data_alter(array &$data): void {
+  if (isset($data['shortlink'])) {
+    $data['shortlink']['shortlink_copy_button'] = [
+      'title' => t('Copy to clipboard'),
+      'help' => t('Provides a button to copy the shortlink URL to the clipboard.'),
+      'field' => [
+        'id' => 'shortlink_copy_button',
+      ],
+    ];
+    $data['shortlink']['shortlink_qr_code'] = [
+      'title' => t('QR Code'),
+      'help' => t('Displays a QR code download link for the shortlink.'),
+      'field' => [
+        'id' => 'shortlink_qr_code',
+      ],
+    ];
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function shortlink_manager_cron(): void {
+  $config = \Drupal::config('shortlink_manager.settings');
+
+  // Process shortlink expiration if enabled.
+  if ($config->get('expiration.enabled')) {
+    $storage = \Drupal::entityTypeManager()->getStorage('shortlink');
+    $queue = \Drupal::queue('shortlink_expiration');
+
+    // Query active shortlinks that have expiration rules set.
+    $query = $storage->getQuery()
+      ->condition('status', TRUE)
+      ->accessCheck(FALSE);
+
+    // Build an OR condition group for shortlinks with any expiration rule.
+    $or_group = $query->orConditionGroup()
+      ->condition('expires_at', 0, '>')
+      ->condition('max_clicks', 0, '>')
+      ->condition('expire_if_inactive_days', 0, '>');
+    $query->condition($or_group);
+
+    $ids = $query->execute();
+
+    foreach ($ids as $id) {
+      $queue->createItem(['shortlink_id' => $id]);
+    }
+  }
+
+  // Purge old click log data based on retention settings.
+  $retention_days = (int) ($config->get('expiration.click_log_retention_days') ?? 90);
+  if ($retention_days > 0) {
+    $threshold = \Drupal::time()->getRequestTime() - ($retention_days * 86400);
+    /** @var \Drupal\shortlink_manager\ShortlinkClickTracker $click_tracker */
+    $click_tracker = \Drupal::service('shortlink_manager.click_tracker');
+    $purged = $click_tracker->purgeOldClicks($threshold);
+    if ($purged > 0) {
+      \Drupal::logger('shortlink_manager')->notice('Purged @count old click log records.', ['@count' => $purged]);
+    }
+  }
 }
 
 /**
@@ -47,7 +293,15 @@ function shortlink_manager_entity_insert(EntityInterface $entity): void {
   }
 
   // Get the UTM set IDs from the configuration.
-  $utm_set_ids = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.utm_set');
+  $utm_set_ids = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.utm_set') ?: [];
+
+  // Fall back to the default UTM set if no specific UTM sets are configured.
+  if (empty($utm_set_ids)) {
+    $default_utm_set = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.default_utm_set');
+    if (!empty($default_utm_set)) {
+      $utm_set_ids = [$default_utm_set];
+    }
+  }
 
   // If multiple UTM sets are configured, create a new shortlink for each.
   foreach ($utm_set_ids as $utm_set_id) {

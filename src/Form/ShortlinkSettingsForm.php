@@ -86,6 +86,16 @@ final class ShortlinkSettingsForm extends ConfigFormBase {
       '#maxlength' => 8,
     ];
 
+    $form['path_length'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Path length'),
+      '#description' => $this->t('The number of random characters to generate for shortlink paths. Longer paths reduce collision probability.'),
+      '#default_value' => $this->config('shortlink_manager.settings')->get('path_length') ?? 6,
+      '#required' => TRUE,
+      '#min' => 4,
+      '#max' => 12,
+    ];
+
     $form['redirect_status'] = [
       '#title' => $this->t('Redirect status'),
       '#type' => 'select',
@@ -135,6 +145,7 @@ final class ShortlinkSettingsForm extends ConfigFormBase {
     }
     $this->config('shortlink_manager.settings')
       ->set('path_prefix', $prefix)
+      ->set('path_length', (int) $form_state->getValue('path_length'))
       ->set('redirect_status', $form_state->getValue('redirect_status'))
       ->set('available_entity_types', $form_state->getValue('available_entity_types'))
       ->save();

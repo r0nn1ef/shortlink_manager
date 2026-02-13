@@ -45,6 +45,53 @@ function shortlink_manager_schema(): array {
     ],
   ];
 
+  $schema['shortlink_clicks'] = [
+    'description' => 'Stores individual click events for shortlinks.',
+    'fields' => [
+      'click_id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary key: unique click event ID.',
+      ],
+      'shortlink_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The shortlink entity ID.',
+      ],
+      'timestamp' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Unix timestamp of the click.',
+      ],
+      'referrer' => [
+        'type' => 'varchar',
+        'length' => 2048,
+        'not null' => FALSE,
+        'description' => 'HTTP referrer URL.',
+      ],
+      'user_agent' => [
+        'type' => 'varchar',
+        'length' => 512,
+        'not null' => FALSE,
+        'description' => 'User agent string.',
+      ],
+      'ip_hash' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => FALSE,
+        'description' => 'SHA-256 hashed IP address for privacy.',
+      ],
+    ],
+    'primary key' => ['click_id'],
+    'indexes' => [
+      'shortlink_id' => ['shortlink_id'],
+      'timestamp' => ['timestamp'],
+      'shortlink_timestamp' => ['shortlink_id', 'timestamp'],
+    ],
+  ];
+
   return $schema;
 }
 
@@ -240,4 +287,175 @@ function shortlink_manager_update_10505(&$sandbox) {
   if ($sandbox['#finished'] === 1) {
     return t('Finished updating @total shortlinks.', ['@total' => $sandbox['total']]);
   }
+}
+
+/**
+ * Add path_length configuration setting.
+ */
+function shortlink_manager_update_10506(): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+  if ($config->get('path_length') === NULL) {
+    $config->set('path_length', 6);
+    $config->save();
+  }
+}
+
+/**
+ * Add default_utm_set to existing auto_generate_settings entries.
+ */
+function shortlink_manager_update_10507(): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+  $settings = $config->get('auto_generate_settings') ?: [];
+
+  foreach ($settings as $entity_type_id => $bundles) {
+    if (!is_array($bundles)) {
+      continue;
+    }
+    foreach ($bundles as $bundle_id => $bundle_settings) {
+      if (is_array($bundle_settings) && !isset($bundle_settings['default_utm_set'])) {
+        $config->set('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.default_utm_set', '');
+      }
+    }
+  }
+
+  $config->save();
+}
+
+/**
+ * Create the shortlink_clicks table for click tracking.
+ */
+function shortlink_manager_update_10508(): void {
+  $schema = \Drupal::database()->schema();
+
+  if (!$schema->tableExists('shortlink_clicks')) {
+    $table = [
+      'description' => 'Stores individual click events for shortlinks.',
+      'fields' => [
+        'click_id' => [
+          'type' => 'serial',
+          'not null' => TRUE,
+          'description' => 'Primary key: unique click event ID.',
+        ],
+        'shortlink_id' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'description' => 'The shortlink entity ID.',
+        ],
+        'timestamp' => [
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'description' => 'Unix timestamp of the click.',
+        ],
+        'referrer' => [
+          'type' => 'varchar',
+          'length' => 2048,
+          'not null' => FALSE,
+          'description' => 'HTTP referrer URL.',
+        ],
+        'user_agent' => [
+          'type' => 'varchar',
+          'length' => 512,
+          'not null' => FALSE,
+          'description' => 'User agent string.',
+        ],
+        'ip_hash' => [
+          'type' => 'varchar',
+          'length' => 64,
+          'not null' => FALSE,
+          'description' => 'SHA-256 hashed IP address for privacy.',
+        ],
+      ],
+      'primary key' => ['click_id'],
+      'indexes' => [
+        'shortlink_id' => ['shortlink_id'],
+        'timestamp' => ['timestamp'],
+        'shortlink_timestamp' => ['shortlink_id', 'timestamp'],
+      ],
+    ];
+    $schema->createTable('shortlink_clicks', $table);
+  }
+}
+
+/**
+ * Add expiration fields to the shortlink entity.
+ */
+function shortlink_manager_update_10509(): string {
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  $expires_at = BaseFieldDefinition::create('timestamp')
+    ->setLabel(t('Expires at'))
+    ->setDescription(t('The date and time when this shortlink expires.'))
+    ->setDisplayOptions('form', [
+      'type' => 'datetime_timestamp',
+      'weight' => 20,
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+  $update_manager->installFieldStorageDefinition('expires_at', 'shortlink', 'shortlink_manager', $expires_at);
+
+  $max_clicks = BaseFieldDefinition::create('integer')
+    ->setLabel(t('Maximum clicks'))
+    ->setDescription(t('Maximum number of clicks allowed before expiration.'))
+    ->setDefaultValue(0)
+    ->setDisplayOptions('form', [
+      'type' => 'number',
+      'weight' => 21,
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+  $update_manager->installFieldStorageDefinition('max_clicks', 'shortlink', 'shortlink_manager', $max_clicks);
+
+  $inactive_days = BaseFieldDefinition::create('integer')
+    ->setLabel(t('Expire after inactive days'))
+    ->setDescription(t('Expire if no clicks in this many days.'))
+    ->setDefaultValue(0)
+    ->setDisplayOptions('form', [
+      'type' => 'number',
+      'weight' => 22,
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+  $update_manager->installFieldStorageDefinition('expire_if_inactive_days', 'shortlink', 'shortlink_manager', $inactive_days);
+
+  return t('Added expiration fields to shortlink entity.')->__toString();
+}
+
+/**
+ * Add expiration configuration defaults.
+ */
+function shortlink_manager_update_10510(): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+  if ($config->get('expiration') === NULL) {
+    $config->set('expiration', [
+      'enabled' => FALSE,
+      'default_expire_days' => 0,
+      'default_max_clicks' => 0,
+      'default_inactive_days' => 0,
+      'click_log_retention_days' => 90,
+    ]);
+    $config->save();
+  }
+}
+
+/**
+ * Add has_broken_destination field to shortlink entity.
+ */
+function shortlink_manager_update_10511(): string {
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  $field = BaseFieldDefinition::create('boolean')
+    ->setLabel(t('Broken destination'))
+    ->setDescription(t('Whether this shortlink has a broken or invalid destination.'))
+    ->setDefaultValue(FALSE)
+    ->setDisplayOptions('view', [
+      'label' => 'inline',
+      'type' => 'boolean',
+      'weight' => 23,
+    ])
+    ->setDisplayConfigurable('view', TRUE);
+  $update_manager->installFieldStorageDefinition('has_broken_destination', 'shortlink', 'shortlink_manager', $field);
+
+  return t('Added broken destination tracking field to shortlink entity.')->__toString();
 }

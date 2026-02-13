@@ -78,6 +78,34 @@ shortlink_manager.shortlink_auto_generate:
   requirements:
     _permission: 'administer shortlink'
 
+shortlink_manager.qr_download:
+  path: '/admin/content/shortlink/{shortlink}/qr'
+  defaults:
+    _title: 'Download QR Code'
+    _controller: '\Drupal\shortlink_manager\Controller\ShortlinkQrController::downloadQr'
+  requirements:
+    _permission: 'view shortlink'
+  options:
+    parameters:
+      shortlink:
+        type: entity:shortlink
+
+shortlink_manager.bulk_generate:
+  path: '/admin/content/shortlink/bulk-generate'
+  defaults:
+    _title: 'Bulk generate shortlinks'
+    _form: 'Drupal\shortlink_manager\Form\BulkGenerateShortlinksForm'
+  requirements:
+    _permission: 'generate bulk shortlinks'
+
+shortlink_manager.expiration_settings:
+  path: '/admin/config/system/shortlink/expiration'
+  defaults:
+    _title: 'Expiration settings'
+    _form: 'Drupal\shortlink_manager\Form\ShortlinkExpirationSettingsForm'
+  requirements:
+    _permission: 'administer shortlink'
+
 shortlink_manager.redirect:
   path: ''
   defaults:

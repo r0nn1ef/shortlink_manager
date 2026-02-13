@@ -10,7 +10,9 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\Utility\Token;
+use Drupal\shortlink_manager\ShortlinkClickTracker;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -43,6 +45,13 @@ final class ShortlinkRedirectController extends ControllerBase {
   protected $token;
 
   /**
+   * The click tracker service.
+   *
+   * @var \Drupal\shortlink_manager\ShortlinkClickTracker
+   */
+  protected ShortlinkClickTracker $clickTracker;
+
+  /**
    * Constructs a new ShortlinkRedirectController object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
@@ -51,11 +60,19 @@ final class ShortlinkRedirectController extends ControllerBase {
    *   The entity type manager.
    * @param \Drupal\Core\Utility\Token $token
    *   The token service.
+   * @param \Drupal\shortlink_manager\ShortlinkClickTracker $clickTracker
+   *   The click tracker service.
    */
-  public function __construct(ConfigFactoryInterface $configFactory, EntityTypeManagerInterface $entityTypeManager, Token $token) {
+  public function __construct(
+    ConfigFactoryInterface $configFactory,
+    EntityTypeManagerInterface $entityTypeManager,
+    Token $token,
+    ShortlinkClickTracker $clickTracker,
+  ) {
     $this->configFactory = $configFactory;
     $this->entityTypeManager = $entityTypeManager;
     $this->token = $token;
+    $this->clickTracker = $clickTracker;
   }
 
   /**
@@ -65,7 +82,8 @@ final class ShortlinkRedirectController extends ControllerBase {
     return new static(
       $container->get('config.factory'),
       $container->get('entity_type.manager'),
-      $container->get('token')
+      $container->get('token'),
+      $container->get('shortlink_manager.click_tracker')
     );
   }
 
@@ -81,7 +99,7 @@ final class ShortlinkRedirectController extends ControllerBase {
    * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
    *
    */
-  public function redirectShortlink(string $slug): Response {
+  public function redirectShortlink(string $slug, Request $request): Response {
     // Get the default redirect status code from the module configuration.
     $config = $this->configFactory->get('shortlink_manager.settings');
     $shortlinkStorage = $this->entityTypeManager->getStorage('shortlink');
@@ -111,10 +129,20 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
+    // Check if the shortlink has expired.
+    if ($shortlink->isExpired()) {
+      $shortlink->set('status', FALSE);
+      $shortlink->save();
+      throw new NotFoundHttpException();
+    }
+
     $current_count = (int) $shortlink->get('click_count')->value;
     $shortlink->set('click_count', $current_count + 1);
     $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
     $shortlink->save();
+
+    // Record the click event in the tracking log.
+    $this->clickTracker->recordClick((int) $shortlink->id(), $request);
 
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {

@@ -15,3 +15,8 @@ shortlink_manager.shortlink_auto_generate:
   title: 'Auto Generate'
   base_route: shortlink_manager.settings
 
+shortlink_manager.expiration_settings:
+  route_name: shortlink_manager.expiration_settings
+  title: 'Expiration'
+  base_route: shortlink_manager.settings
+

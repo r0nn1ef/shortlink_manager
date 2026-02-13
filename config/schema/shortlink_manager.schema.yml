@@ -56,6 +56,9 @@ shortlink_manager.settings:
     path_prefix:
       type: string
       label: 'Path prefix'
+    path_length:
+      type: integer
+      label: 'Path length'
     redirect_status:
       type: integer
       label: 'Default redirect status'
@@ -88,6 +91,28 @@ shortlink_manager.settings:
                   sequence:
                     type: string
                     label: 'UTM Set ID'
+                default_utm_set:
+                  type: string
+                  label: 'Default UTM Set ID'
+    expiration:
+      type: mapping
+      label: 'Expiration settings'
+      mapping:
+        enabled:
+          type: boolean
+          label: 'Enable expiration cron'
+        default_expire_days:
+          type: integer
+          label: 'Default expiration days'
+        default_max_clicks:
+          type: integer
+          label: 'Default maximum clicks'
+        default_inactive_days:
+          type: integer
+          label: 'Default inactive days'
+        click_log_retention_days:
+          type: integer
+          label: 'Click log retention days'
     passthrough_parameters:
       type: sequence
       label: 'Passthrough Parameters'

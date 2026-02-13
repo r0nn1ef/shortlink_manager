@@ -4,6 +4,12 @@ entity.shortlink.add_form:
   appears_on:
     - entity.shortlink.collection
 
+shortlink_manager.bulk_generate:
+  route_name: 'shortlink_manager.bulk_generate'
+  title: 'Bulk generate shortlinks'
+  appears_on:
+    - entity.shortlink.collection
+
 entity.utm_set.add_form:
   route_name: 'entity.utm_set.add_form'
   title: 'Add utm set'

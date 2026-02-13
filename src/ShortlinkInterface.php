@@ -137,4 +137,14 @@ interface ShortlinkInterface extends ContentEntityInterface {
    */
   public function getTargetEntity(): ?EntityInterface;
 
+  /**
+   * Checks if this shortlink has expired.
+   *
+   * Evaluates time-based expiration, maximum clicks, and inactivity rules.
+   *
+   * @return bool
+   *   TRUE if the shortlink has expired, FALSE otherwise.
+   */
+  public function isExpired(): bool;
+
 }

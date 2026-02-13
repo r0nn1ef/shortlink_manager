@@ -85,6 +85,73 @@ final class ShortlinkForm extends ContentEntityForm {
      * @todo Wrap target entity type/id and destination override in details sec.
      */
 
+    // Expiration type selector with conditional field visibility.
+    $form['expiration_wrapper'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Expiration'),
+      '#open' => FALSE,
+      '#weight' => 20,
+    ];
+
+    // Determine current expiration type from existing entity values.
+    $current_type = 'none';
+    if (!$this->entity->isNew()) {
+      if (!empty($this->entity->get('expires_at')->value)) {
+        $current_type = 'time';
+      }
+      elseif ((int) $this->entity->get('max_clicks')->value > 0) {
+        $current_type = 'max_clicks';
+      }
+      elseif ((int) $this->entity->get('expire_if_inactive_days')->value > 0) {
+        $current_type = 'inactive';
+      }
+    }
+    else {
+      $config = $this->configFactory->get('shortlink_manager.settings');
+      $current_type = $config->get('expiration.default_expiration_type') ?? 'none';
+    }
+
+    $form['expiration_type'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Expiration method'),
+      '#options' => [
+        'none' => $this->t('None'),
+        'time' => $this->t('Expire at a specific date/time'),
+        'max_clicks' => $this->t('Expire after maximum clicks reached'),
+        'inactive' => $this->t('Expire after days of inactivity'),
+      ],
+      '#default_value' => $current_type,
+      '#group' => 'expiration_wrapper',
+    ];
+
+    // Move the base fields into the expiration wrapper with #states.
+    if (isset($form['expires_at'])) {
+      $form['expires_at']['#group'] = 'expiration_wrapper';
+      $form['expires_at']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'time'],
+        ],
+      ];
+    }
+
+    if (isset($form['max_clicks'])) {
+      $form['max_clicks']['#group'] = 'expiration_wrapper';
+      $form['max_clicks']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'max_clicks'],
+        ],
+      ];
+    }
+
+    if (isset($form['expire_if_inactive_days'])) {
+      $form['expire_if_inactive_days']['#group'] = 'expiration_wrapper';
+      $form['expire_if_inactive_days']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'inactive'],
+        ],
+      ];
+    }
+
     return $form;
   }
 
@@ -155,6 +222,18 @@ final class ShortlinkForm extends ContentEntityForm {
       elseif (empty($this->entity->getPath())) {
         $this->entity->setPath($this->shortlinkManager->generateShortlinkPath());
       }
+    }
+
+    // Clear expiration fields that don't match the selected type.
+    $expiration_type = $form_state->getValue('expiration_type') ?? 'none';
+    if ($expiration_type !== 'time') {
+      $this->entity->set('expires_at', NULL);
+    }
+    if ($expiration_type !== 'max_clicks') {
+      $this->entity->set('max_clicks', 0);
+    }
+    if ($expiration_type !== 'inactive') {
+      $this->entity->set('expire_if_inactive_days', 0);
     }
 
     $result = parent::save($form, $form_state);

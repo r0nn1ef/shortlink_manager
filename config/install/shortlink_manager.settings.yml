@@ -5,6 +5,7 @@ available_entity_types: {}
 auto_generate_settings: {}
 expiration:
   enabled: false
+  default_expiration_type: none
   default_expire_days: 0
   default_max_clicks: 0
   default_inactive_days: 0

@@ -459,3 +459,25 @@ function shortlink_manager_update_10511(): string {
 
   return t('Added broken destination tracking field to shortlink entity.')->__toString();
 }
+
+/**
+ * Add default_expiration_type configuration setting.
+ */
+function shortlink_manager_update_10512(): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+  if ($config->get('expiration.default_expiration_type') === NULL) {
+    // Detect existing config to set the correct type.
+    $type = 'none';
+    if ((int) $config->get('expiration.default_expire_days') > 0) {
+      $type = 'time';
+    }
+    elseif ((int) $config->get('expiration.default_max_clicks') > 0) {
+      $type = 'max_clicks';
+    }
+    elseif ((int) $config->get('expiration.default_inactive_days') > 0) {
+      $type = 'inactive';
+    }
+    $config->set('expiration.default_expiration_type', $type);
+    $config->save();
+  }
+}

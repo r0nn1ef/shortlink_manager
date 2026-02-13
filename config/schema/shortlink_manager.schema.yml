@@ -101,6 +101,9 @@ shortlink_manager.settings:
         enabled:
           type: boolean
           label: 'Enable expiration cron'
+        default_expiration_type:
+          type: string
+          label: 'Default expiration method'
         default_expire_days:
           type: integer
           label: 'Default expiration days'

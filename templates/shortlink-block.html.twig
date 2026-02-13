@@ -28,6 +28,7 @@
                     <span class="shortlink-separator">:</span>
                     {# Link to the shortlink URL #}
                     <a href="{{ shortlink_url }}">{{ path }}</a>
+                    <button class="shortlink-copy-btn" data-shortlink-url="{{ shortlink_url }}" type="button">{{ 'Copy'|t }}</button>
                 </li>
             {% endfor %}
         </ul>

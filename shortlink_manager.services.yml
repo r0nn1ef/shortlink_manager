@@ -6,6 +6,22 @@ services:
       - '@config.factory'
       - '@entity_type.manager'
       - '@messenger'
+      - '@path_alias.manager'
+      - '@path.validator'
+  shortlink_manager.qr_generator:
+    class: Drupal\shortlink_manager\ShortlinkQrGenerator
+    arguments:
+      - '@config.factory'
+  shortlink_manager.click_tracker:
+    class: Drupal\shortlink_manager\ShortlinkClickTracker
+    arguments:
+      - '@database'
+  shortlink_manager.health_checker:
+    class: Drupal\shortlink_manager\ShortlinkHealthChecker
+    arguments:
+      - '@entity_type.manager'
+      - '@path.validator'
+      - '@http_client'
   shortlink_manager.route_subscriber:
     class: Drupal\shortlink_manager\Routing\ShortlinkRouteSubscriber
     arguments: [ '@config.factory' ]

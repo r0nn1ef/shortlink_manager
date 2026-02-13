@@ -30,7 +30,7 @@ use Drupal\shortlink_manager\UtmSetInterface;
  * "edit" = "Drupal\shortlink_manager\Form\ShortlinkForm",
  * "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm"
  * },
- * "access" = "Drupal\Core\Entity\EntityAccessControlHandler",
+ * "access" = "Drupal\shortlink_manager\ShortlinkAccessControlHandler",
  * "route_provider" = {
  * "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
  * },
@@ -189,6 +189,47 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function isExpired(): bool {
+    $now = \Drupal::time()->getRequestTime();
+
+    // Check time-based expiration.
+    $expires_at = $this->get('expires_at')->value;
+    if (!empty($expires_at) && $now >= (int) $expires_at) {
+      return TRUE;
+    }
+
+    // Check max clicks expiration.
+    $max_clicks = (int) $this->get('max_clicks')->value;
+    if ($max_clicks > 0) {
+      $click_count = (int) $this->get('click_count')->value;
+      if ($click_count >= $max_clicks) {
+        return TRUE;
+      }
+    }
+
+    // Check inactivity expiration.
+    $inactive_days = (int) $this->get('expire_if_inactive_days')->value;
+    if ($inactive_days > 0) {
+      $last_accessed = $this->get('last_accessed')->value;
+      $threshold = $now - ($inactive_days * 86400);
+      if (empty($last_accessed)) {
+        // Never accessed: check against entity creation if available.
+        $created = $this->get('created')->value ?? NULL;
+        if (!empty($created) && (int) $created < $threshold) {
+          return TRUE;
+        }
+      }
+      elseif ((int) $last_accessed < $threshold) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
    * Returns the Shortlink path.
    *
    * @return string
@@ -320,6 +361,49 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
         'label' => 'inline',
         'type' => 'timestamp',
         'weight' => 11,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['expires_at'] = BaseFieldDefinition::create('timestamp')
+      ->setLabel(t('Expires at'))
+      ->setDescription(t('The date and time when this shortlink expires. Leave empty for no time-based expiration.'))
+      ->setDisplayOptions('form', [
+        'type' => 'datetime_timestamp',
+        'weight' => 20,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['max_clicks'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Maximum clicks'))
+      ->setDescription(t('The maximum number of clicks allowed before this shortlink expires. Set to 0 for unlimited.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 21,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['expire_if_inactive_days'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Expire after inactive days'))
+      ->setDescription(t('Expire this shortlink if it has not been clicked in this many days. Set to 0 to disable.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 22,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['has_broken_destination'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Broken destination'))
+      ->setDescription(t('Whether this shortlink has a broken or invalid destination.'))
+      ->setDefaultValue(FALSE)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'boolean',
+        'weight' => 23,
       ])
       ->setDisplayConfigurable('view', TRUE);
 

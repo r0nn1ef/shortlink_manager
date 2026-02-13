@@ -1,0 +1,10 @@
+clipboard:
+  version: VERSION
+  js:
+    js/shortlink-clipboard.js: {}
+  css:
+    component:
+      css/shortlink-manager.css: {}
+  dependencies:
+    - core/drupal
+    - core/once

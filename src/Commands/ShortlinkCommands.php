@@ -8,6 +8,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drush\Commands\DrushCommands;
+use Drupal\shortlink_manager\ShortlinkHealthChecker;
 use Drupal\shortlink_manager\ShortlinkManager;
 
 /**
@@ -44,6 +45,13 @@ final class ShortlinkCommands extends DrushCommands {
   protected $shortlinkManager;
 
   /**
+   * The health checker service.
+   *
+   * @var \Drupal\shortlink_manager\ShortlinkHealthChecker
+   */
+  protected ShortlinkHealthChecker $healthChecker;
+
+  /**
    * Constructs a new ShortlinkCommands object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
@@ -54,13 +62,22 @@ final class ShortlinkCommands extends DrushCommands {
    *   The messenger service.
    * @param \Drupal\shortlink_manager\ShortlinkManager $shortlinkManager
    *   The shortlink manager service.
+   * @param \Drupal\shortlink_manager\ShortlinkHealthChecker $healthChecker
+   *   The health checker service.
    */
-  public function __construct(ConfigFactoryInterface $configFactory, EntityTypeManagerInterface $entityTypeManager, MessengerInterface $messenger, ShortlinkManager $shortlinkManager) {
+  public function __construct(
+    ConfigFactoryInterface $configFactory,
+    EntityTypeManagerInterface $entityTypeManager,
+    MessengerInterface $messenger,
+    ShortlinkManager $shortlinkManager,
+    ShortlinkHealthChecker $healthChecker,
+  ) {
     parent::__construct();
     $this->configFactory = $configFactory;
     $this->entityTypeManager = $entityTypeManager;
     $this->messenger = $messenger;
     $this->shortlinkManager = $shortlinkManager;
+    $this->healthChecker = $healthChecker;
   }
 
   /**
@@ -142,6 +159,87 @@ final class ShortlinkCommands extends DrushCommands {
     }
 
     $this->io()->success(sprintf('Finished successfully. Created %d shortlinks and skipped %d items.', $created_count, $skipped_count));
+  }
+
+  /**
+   * Checks shortlink destinations for broken links.
+   *
+   * @command shortlink:check-destinations
+   * @aliases sl:check
+   * @usage shortlink:check-destinations
+   *   Checks all active shortlinks for broken or invalid destinations.
+   */
+  public function checkDestinations(): void {
+    $this->io()->note('Checking shortlink destinations...');
+
+    $issues = $this->healthChecker->checkDestinations();
+
+    if (empty($issues)) {
+      $this->io()->success('All shortlink destinations are healthy.');
+      return;
+    }
+
+    $rows = [];
+    foreach ($issues as $id => $issue) {
+      $shortlink = $issue['shortlink'];
+      $rows[] = [
+        $id,
+        $shortlink->label(),
+        $shortlink->getPath(),
+        $issue['issue'],
+        $issue['details'],
+      ];
+    }
+
+    $this->io()->table(
+      ['ID', 'Label', 'Path', 'Issue', 'Details'],
+      $rows
+    );
+
+    $this->io()->warning(sprintf('Found %d shortlinks with broken destinations.', count($issues)));
+
+    if ($this->io()->confirm('Flag these shortlinks as having broken destinations?')) {
+      $this->healthChecker->flagBrokenDestinations($issues);
+      $this->io()->success('Broken destination flags updated.');
+    }
+  }
+
+  /**
+   * Checks for redirect chains in shortlink destinations.
+   *
+   * @command shortlink:check-chains
+   * @aliases sl:chains
+   * @usage shortlink:check-chains
+   *   Checks all active shortlinks for redirect chain issues.
+   */
+  public function checkRedirectChains(): void {
+    $this->io()->note('Checking for redirect chains...');
+
+    $chains = $this->healthChecker->checkRedirectChains();
+
+    if (empty($chains)) {
+      $this->io()->success('No redirect chains detected.');
+      return;
+    }
+
+    $rows = [];
+    foreach ($chains as $id => $chain) {
+      $shortlink = $chain['shortlink'];
+      $rows[] = [
+        $id,
+        $shortlink->label(),
+        $shortlink->getPath(),
+        $chain['status_code'],
+        $chain['redirects_to'],
+      ];
+    }
+
+    $this->io()->table(
+      ['ID', 'Label', 'Path', 'Status', 'Redirects to'],
+      $rows
+    );
+
+    $this->io()->warning(sprintf('Found %d shortlinks with redirect chains.', count($chains)));
   }
 
   /**

@@ -1,0 +1,25 @@
+/**
+ * @file
+ * Shortlink Manager styles.
+ */
+
+.shortlink-copy-btn {
+  cursor: pointer;
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #f5f5f5;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.shortlink-copy-btn:hover {
+  background: #e8e8e8;
+  border-color: #999;
+}
+
+.shortlink-copy-btn.shortlink-copied {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}

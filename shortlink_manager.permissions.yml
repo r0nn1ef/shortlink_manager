@@ -20,6 +20,12 @@ edit any shortlink:
 delete any shortlink:
   title: 'Delete any shortlink'
   description: 'Allows roles to delete any existing shortlink.'
+generate bulk shortlinks:
+  title: 'Generate bulk shortlinks'
+  description: 'Allows roles to bulk generate shortlinks for entities.'
+view shortlink dashboard:
+  title: 'View shortlink dashboard'
+  description: 'Allows roles to see the shortlink analytics dashboard.'
 use shortlink:
   title: 'Use shortlinks'
   description: 'Allows roles to access shortlinks for redirection.'

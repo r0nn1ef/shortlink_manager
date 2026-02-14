@@ -171,7 +171,10 @@ Navigate to `/admin/structure/utm-set` to create and manage UTM parameter sets. 
 * **Listing:** Navigate to `/admin/content/shortlinks` to view, filter, and manage all shortlinks.
 * **Creating:** Add shortlinks manually at `/admin/content/shortlink/add`. Optionally enter a custom vanity slug or let the module auto-generate one.
 * **Bulk Generate:** Navigate to `/admin/content/shortlink/bulk-generate` to create shortlinks for all entities of a given type that are missing one.
-* **QR Codes:** Download a QR code PNG for any shortlink from the listing view or via `/admin/content/shortlink/{id}/qr`.
+* **QR Codes:** Download a QR code PNG for any shortlink. QR codes can be accessed in the following ways:
+  * **Direct download:** Visit `/admin/content/shortlink/{id}/qr` to download a PNG file (`shortlink-{id}-qr.png`). Requires the `view shortlink` permission.
+  * **Views listing:** If the QR Code field is added to a shortlink Views display, a download link will appear for each shortlink in the listing at `/admin/content/shortlink`.
+  * **Programmatic:** Use the `shortlink_manager.qr_generator` service to generate QR codes in custom code. The `generateQrCode()` method returns raw PNG data, and `getQrCodeDataUri()` returns a base64 data URI for inline embedding.
 * **Copy to Clipboard:** Click the copy button next to any shortlink URL in the listing or block to copy it.
 
 ### Shortlink Block

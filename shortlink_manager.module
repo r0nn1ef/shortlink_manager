@@ -192,11 +192,13 @@ function shortlink_manager_form_alter(array &$form, \Drupal\Core\Form\FormStateI
     $click_count = $shortlink->get('click_count')->value ?? 0;
 
     $items[] = [
-      '#markup' => '<div class="shortlink-preview-item">'
-        . '<a href="' . $full_url . '">' . $full_url . '</a> '
-        . '<button class="shortlink-copy-btn" data-shortlink-url="' . $full_url . '" type="button">' . t('Copy') . '</button>'
-        . '<br><small>' . t('UTM: @utm | Clicks: @clicks', ['@utm' => $utm_label, '@clicks' => $click_count]) . '</small>'
-        . '</div>',
+      '#type' => 'inline_template',
+      '#template' => '<div class="shortlink-preview-item"><a href="{{ url }}" target="_blank">{{ url }}</a> <button class="shortlink-copy-btn" data-shortlink-url="{{ url }}" type="button">{{ copy_label }}</button><br><small>{{ details }}</small></div>',
+      '#context' => [
+        'url' => $full_url,
+        'copy_label' => t('Copy'),
+        'details' => t('UTM: @utm | Clicks: @clicks', ['@utm' => $utm_label, '@clicks' => $click_count]),
+      ],
     ];
   }
 

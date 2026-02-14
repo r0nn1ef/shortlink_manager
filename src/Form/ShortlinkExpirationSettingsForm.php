@@ -63,13 +63,13 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
       '#title' => $this->t('Default expiration days'),
       '#description' => $this->t('Number of days after which new shortlinks expire.'),
       '#default_value' => $config->get('expiration.default_expire_days') ?? 0,
-      '#min' => 1,
+      '#min' => 0,
       '#states' => [
         'visible' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'time'],
+          ':input[name="default_expiration_type"]' => ['value' => 'time'],
         ],
         'required' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'time'],
+          ':input[name="default_expiration_type"]' => ['value' => 'time'],
         ],
       ],
     ];
@@ -79,13 +79,13 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
       '#title' => $this->t('Default maximum clicks'),
       '#description' => $this->t('Maximum number of clicks allowed before the shortlink expires.'),
       '#default_value' => $config->get('expiration.default_max_clicks') ?? 0,
-      '#min' => 1,
+      '#min' => 0,
       '#states' => [
         'visible' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'max_clicks'],
+          ':input[name="default_expiration_type"]' => ['value' => 'max_clicks'],
         ],
         'required' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'max_clicks'],
+          ':input[name="default_expiration_type"]' => ['value' => 'max_clicks'],
         ],
       ],
     ];
@@ -95,13 +95,13 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
       '#title' => $this->t('Default inactive days'),
       '#description' => $this->t('Number of days of inactivity (no clicks) after which the shortlink expires.'),
       '#default_value' => $config->get('expiration.default_inactive_days') ?? 0,
-      '#min' => 1,
+      '#min' => 0,
       '#states' => [
         'visible' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'inactive'],
+          ':input[name="default_expiration_type"]' => ['value' => 'inactive'],
         ],
         'required' => [
-          ':input[name="expiration[default_expiration_type]"]' => ['value' => 'inactive'],
+          ':input[name="default_expiration_type"]' => ['value' => 'inactive'],
         ],
       ],
     ];
@@ -127,22 +127,20 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    $expiration_values = $form_state->getValue('expiration');
-    $click_log_values = $form_state->getValue('click_log');
-    $expiration_type = $expiration_values['default_expiration_type'];
+    $expiration_type = $form_state->getValue('default_expiration_type');
 
     // Only save the value for the selected expiration type; zero out the rest.
-    $expire_days = $expiration_type === 'time' ? (int) $expiration_values['default_expire_days'] : 0;
-    $max_clicks = $expiration_type === 'max_clicks' ? (int) $expiration_values['default_max_clicks'] : 0;
-    $inactive_days = $expiration_type === 'inactive' ? (int) $expiration_values['default_inactive_days'] : 0;
+    $expire_days = $expiration_type === 'time' ? (int) $form_state->getValue('default_expire_days') : 0;
+    $max_clicks = $expiration_type === 'max_clicks' ? (int) $form_state->getValue('default_max_clicks') : 0;
+    $inactive_days = $expiration_type === 'inactive' ? (int) $form_state->getValue('default_inactive_days') : 0;
 
     $this->config('shortlink_manager.settings')
-      ->set('expiration.enabled', (bool) $expiration_values['enabled'])
+      ->set('expiration.enabled', (bool) $form_state->getValue('enabled'))
       ->set('expiration.default_expiration_type', $expiration_type)
       ->set('expiration.default_expire_days', $expire_days)
       ->set('expiration.default_max_clicks', $max_clicks)
       ->set('expiration.default_inactive_days', $inactive_days)
-      ->set('expiration.click_log_retention_days', (int) $click_log_values['click_log_retention_days'])
+      ->set('expiration.click_log_retention_days', (int) $form_state->getValue('click_log_retention_days'))
       ->save();
 
     parent::submitForm($form, $form_state);

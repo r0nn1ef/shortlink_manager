@@ -829,12 +829,82 @@ display:
           row_class: ''
           default_row_class: true
           columns:
+            destination_override: destination_override
             id: id
-          default: '-1'
+            target_entity_type_1: target_entity_type_1
+            target_entity_id: target_entity_id
+            path: path
+            click_count: click_count
+            last_accessed: last_accessed
+            utm_set: utm_set
+            status: status
+            nothing: nothing
+          default: click_count
           info:
-            id:
+            destination_override:
               sortable: false
               default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            id:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            target_entity_type_1:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            target_entity_id:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            path:
+              sortable: false
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            click_count:
+              sortable: true
+              default_sort_order: desc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            last_accessed:
+              sortable: true
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            utm_set:
+              sortable: false
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            status:
+              sortable: false
+              default_sort_order: asc
+              align: ''
+              separator: ''
+              empty_column: false
+              responsive: ''
+            nothing:
               align: ''
               separator: ''
               empty_column: false
@@ -1672,8 +1742,8 @@ display:
           label: 'Entity ID'
           exclude: false
           alter:
-            alter_text: false
-            text: ''
+            alter_text: true
+            text: '<a href="/{{ target_entity_type_1 }}/{{ target_entity_id }}">{{ target_entity_id }}</a>'
             make_link: false
             path: ''
             absolute: false
@@ -1713,7 +1783,7 @@ display:
           click_sort_column: value
           type: string
           settings:
-            link_to_entity: 1
+            link_to_entity: 0
           group_column: value
           group_columns: {  }
           group_rows: true
@@ -2051,19 +2121,20 @@ display:
           not: false
           settings:
             format: yes-no
-        nothing:
-          id: nothing
-          table: views
-          field: nothing
+        operations:
+          id: operations
+          table: shortlink
+          field: operations
           relationship: none
           group_type: group
           admin_label: ''
-          plugin_id: custom
+          entity_type: shortlink
+          plugin_id: entity_operations
           label: Operations
           exclude: false
           alter:
-            alter_text: true
-            text: '<a href="/admin/content/shortlink/{{ id }}?destination=/admin/content/shortlink">edit</a>&nbsp;&nbsp;<a href="https://drupalodyssey.ddev.site/admin/content/shortlink/{{ id }}/delete?destination=/admin/content/shortlink">delete</a>'
+            alter_text: false
+            text: ''
             make_link: false
             path: ''
             absolute: false
@@ -2092,14 +2163,15 @@ display:
           element_class: ''
           element_label_type: ''
           element_label_class: ''
-          element_label_colon: true
+          element_label_colon: false
           element_wrapper_type: ''
           element_wrapper_class: ''
           element_default_classes: true
           empty: ''
           hide_empty: false
           empty_zero: false
-          hide_alter_empty: false
+          hide_alter_empty: true
+          destination: false
       pager:
         type: full
         options:

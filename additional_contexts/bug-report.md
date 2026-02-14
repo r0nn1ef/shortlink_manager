@@ -11,15 +11,6 @@ These should be worked in priority order.
 
 ## P1
 
-### Shortlink expiration admin form does not submit
-
-- The form will not submit regardless of the options selected.
-
-### Entity shortlink tab on the entity form (i.e. Node edit form)
-
-- The 'Copy' text does not copy link to the clipboard
-- The shortlink display that is linked should open in a new window so the user does not navigate away from the edit form.
-
 ## P2
 
 ## P3

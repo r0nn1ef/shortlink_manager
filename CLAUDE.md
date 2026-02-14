@@ -167,3 +167,7 @@ Update hooks in `shortlink_manager.install` follow the `shortlink_manager_update
 - The `ShortlinkRedirectController` checks expiration before redirecting and disables expired shortlinks on access.
 - Click tracking stores hashed IPs (SHA-256) for privacy. Old click data is purged by cron based on `expiration.click_log_retention_days` config (default: 90 days).
 - The JSON:API module (Drupal core) auto-exposes the Shortlink content entity; granular access is handled by `ShortlinkAccessControlHandler`.
+
+## Additional contexts
+
+Additional context used for processing are located in ./additional_contexts folder.

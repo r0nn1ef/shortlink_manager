@@ -41,13 +41,6 @@ final class BulkGenerateShortlinksForm extends FormBase {
   protected ShortlinkManager $shortlinkManager;
 
   /**
-   * The config factory.
-   *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface
-   */
-  protected ConfigFactoryInterface $configFactory;
-
-  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container): static {

@@ -7,8 +7,9 @@ namespace Drupal\shortlink_manager\Form;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Drupal\Component\Utility\Html;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -32,8 +33,8 @@ final class ShortlinkAutoGenerateForm extends ConfigFormBase {
    */
   protected $entityTypeBundleInfo;
 
-  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info) {
-    parent::__construct($config_factory);
+  public function __construct(ConfigFactoryInterface $config_factory, TypedConfigManagerInterface $typedConfigManager, EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info) {
+    parent::__construct($config_factory, $typedConfigManager);
     $this->entityTypeManager = $entity_type_manager;
     $this->entityTypeBundleInfo = $entity_type_bundle_info;
   }
@@ -44,6 +45,7 @@ final class ShortlinkAutoGenerateForm extends ConfigFormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
+      $container->get('config.typed'),
       $container->get('entity_type.manager'),
       $container->get('entity_type.bundle.info')
     );
@@ -139,10 +141,21 @@ final class ShortlinkAutoGenerateForm extends ConfigFormBase {
           '#multiple' => TRUE,
           '#size' => 5,
           '#parents' => array_merge($parents, ['utm_set']),
-          /*
-           * The UTM set dropdown should only be visible when the checkbox
-           * is checked.
-           */
+          '#states' => [
+            'visible' => [
+              ':input[name="' . Html::escape(implode('][', array_merge($parents, ['enabled']))) . '"]' => ['checked' => TRUE],
+            ],
+          ],
+        ];
+
+        $default_utm_set = $config->get('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.default_utm_set');
+        $form['settings_tabs'][$entity_type_id . '_tab'][$bundle_id]['default_utm_set'] = [
+          '#type' => 'select',
+          '#title' => $this->t('Default UTM Set'),
+          '#options' => $utm_options,
+          '#description' => $this->t('The default UTM Set to pre-fill when manually creating shortlinks for this bundle.'),
+          '#default_value' => $default_utm_set ?? '',
+          '#parents' => array_merge($parents, ['default_utm_set']),
           '#states' => [
             'visible' => [
               ':input[name="' . Html::escape(implode('][', array_merge($parents, ['enabled']))) . '"]' => ['checked' => TRUE],
@@ -190,9 +203,12 @@ final class ShortlinkAutoGenerateForm extends ConfigFormBase {
                 $utm_set_value = [];
               }
 
+              $default_utm_set_value = $bundle_values['default_utm_set'] ?? '';
+
               // Save the values to the nested configuration keys.
               $config->set('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.enabled', $enabled_value);
               $config->set('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.utm_set', $utm_set_value);
+              $config->set('auto_generate_settings.' . $entity_type_id . '.' . $bundle_id . '.default_utm_set', $default_utm_set_value);
             }
           }
         }

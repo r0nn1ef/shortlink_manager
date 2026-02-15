@@ -6,11 +6,29 @@ namespace Drupal\shortlink_manager\Form;
 
 use Drupal\Core\Entity\ContentEntityForm;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\shortlink_manager\ShortlinkManager;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Shortlink form.
  */
 final class ShortlinkForm extends ContentEntityForm {
+
+  /**
+   * The shortlink manager service.
+   *
+   * @var \Drupal\shortlink_manager\ShortlinkManager
+   */
+  protected ShortlinkManager $shortlinkManager;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container): static {
+    $instance = parent::create($container);
+    $instance->shortlinkManager = $container->get('shortlink_manager.shortlink_manager');
+    return $instance;
+  }
 
   /**
    * {@inheritdoc}
@@ -20,6 +38,26 @@ final class ShortlinkForm extends ContentEntityForm {
     $form = parent::form($form, $form_state);
 
     $form['label']['widget'][0]['value']['#title'] = $this->t('Label');
+
+    $config = $this->configFactory->get('shortlink_manager.settings');
+    $path_prefix = $config->get('path_prefix') ?? 'go';
+
+    // Add custom path field for vanity URLs.
+    $form['custom_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Custom path'),
+      '#description' => $this->t('Optionally enter a custom slug for this shortlink (e.g., "spring-sale"). Leave empty for auto-generation. The full path will be: @prefix/your-custom-slug', [
+        '@prefix' => $path_prefix,
+      ]),
+      '#default_value' => '',
+      '#maxlength' => 255,
+      '#weight' => 1,
+    ];
+
+    // Hide the auto-generated path field for new entities.
+    if ($this->entity->isNew()) {
+      $form['path']['#access'] = FALSE;
+    }
 
     /*
      * Set the form states to correctly reference the fields in their
@@ -47,6 +85,73 @@ final class ShortlinkForm extends ContentEntityForm {
      * @todo Wrap target entity type/id and destination override in details sec.
      */
 
+    // Expiration type selector with conditional field visibility.
+    $form['expiration_wrapper'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Expiration'),
+      '#open' => FALSE,
+      '#weight' => 20,
+    ];
+
+    // Determine current expiration type from existing entity values.
+    $current_type = 'none';
+    if (!$this->entity->isNew()) {
+      if (!empty($this->entity->get('expires_at')->value)) {
+        $current_type = 'time';
+      }
+      elseif ((int) $this->entity->get('max_clicks')->value > 0) {
+        $current_type = 'max_clicks';
+      }
+      elseif ((int) $this->entity->get('expire_if_inactive_days')->value > 0) {
+        $current_type = 'inactive';
+      }
+    }
+    else {
+      $config = $this->configFactory->get('shortlink_manager.settings');
+      $current_type = $config->get('expiration.default_expiration_type') ?? 'none';
+    }
+
+    $form['expiration_type'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Expiration method'),
+      '#options' => [
+        'none' => $this->t('None'),
+        'time' => $this->t('Expire at a specific date/time'),
+        'max_clicks' => $this->t('Expire after maximum clicks reached'),
+        'inactive' => $this->t('Expire after days of inactivity'),
+      ],
+      '#default_value' => $current_type,
+      '#group' => 'expiration_wrapper',
+    ];
+
+    // Move the base fields into the expiration wrapper with #states.
+    if (isset($form['expires_at'])) {
+      $form['expires_at']['#group'] = 'expiration_wrapper';
+      $form['expires_at']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'time'],
+        ],
+      ];
+    }
+
+    if (isset($form['max_clicks'])) {
+      $form['max_clicks']['#group'] = 'expiration_wrapper';
+      $form['max_clicks']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'max_clicks'],
+        ],
+      ];
+    }
+
+    if (isset($form['expire_if_inactive_days'])) {
+      $form['expire_if_inactive_days']['#group'] = 'expiration_wrapper';
+      $form['expire_if_inactive_days']['#states'] = [
+        'visible' => [
+          ':input[name="expiration_type"]' => ['value' => 'inactive'],
+        ],
+      ];
+    }
+
     return $form;
   }
 
@@ -55,6 +160,16 @@ final class ShortlinkForm extends ContentEntityForm {
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     parent::validateForm($form, $form_state);
+
+    // Validate custom path if provided.
+    $custom_path = trim($form_state->getValue('custom_path') ?? '');
+    if (!empty($custom_path)) {
+      $exclude_id = $this->entity->isNew() ? NULL : (int) $this->entity->id();
+      $errors = $this->shortlinkManager->validateCustomPath($custom_path, $exclude_id);
+      foreach ($errors as $error) {
+        $form_state->setErrorByName('custom_path', $error);
+      }
+    }
 
     // The form values are now nested inside the 'target' key.
     $target_entity_type = $form_state->getValue('target_entity_type')[0]['value'];
@@ -96,6 +211,31 @@ final class ShortlinkForm extends ContentEntityForm {
    * {@inheritdoc}
    */
   public function save(array $form, FormStateInterface $form_state): int {
+    // Set the path from custom slug or auto-generate.
+    $custom_path = trim($form_state->getValue('custom_path') ?? '');
+    if ($this->entity->isNew()) {
+      if (!empty($custom_path)) {
+        $config = $this->configFactory->get('shortlink_manager.settings');
+        $path_prefix = $config->get('path_prefix') ?? 'go';
+        $this->entity->setPath($path_prefix . '/' . $custom_path);
+      }
+      elseif (empty($this->entity->getPath())) {
+        $this->entity->setPath($this->shortlinkManager->generateShortlinkPath());
+      }
+    }
+
+    // Clear expiration fields that don't match the selected type.
+    $expiration_type = $form_state->getValue('expiration_type') ?? 'none';
+    if ($expiration_type !== 'time') {
+      $this->entity->set('expires_at', NULL);
+    }
+    if ($expiration_type !== 'max_clicks') {
+      $this->entity->set('max_clicks', 0);
+    }
+    if ($expiration_type !== 'inactive') {
+      $this->entity->set('expire_if_inactive_days', 0);
+    }
+
     $result = parent::save($form, $form_state);
     $message_args = ['%label' => $this->entity->label()];
     $this->messenger()->addStatus(

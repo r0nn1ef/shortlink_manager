@@ -1,0 +1,60 @@
+{#
+/**
+ * @file
+ * Template for the shortlink dashboard block.
+ *
+ * Available variables:
+ * - total_clicks: Total click count for the last 30 days.
+ * - top_shortlinks: Array of rows [label, path, click_count].
+ * - recent_clicks: Array of rows [label, timestamp, referrer].
+ */
+#}
+<div class="shortlink-dashboard">
+  <div class="shortlink-dashboard-summary">
+    <strong>{{ 'Total clicks (last 30 days):'|t }}</strong> {{ total_clicks }}
+  </div>
+
+  {% if top_shortlinks %}
+    <h4>{{ 'Top shortlinks'|t }}</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'Label'|t }}</th>
+          <th>{{ 'Path'|t }}</th>
+          <th>{{ 'Clicks'|t }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in top_shortlinks %}
+          <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if recent_clicks %}
+    <h4>{{ 'Recent clicks'|t }}</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'Shortlink'|t }}</th>
+          <th>{{ 'Time'|t }}</th>
+          <th>{{ 'Referrer'|t }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in recent_clicks %}
+          <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>

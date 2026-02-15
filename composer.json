@@ -14,6 +14,7 @@
   "require": {
     "php": "^8.3",
     "drupal/core": "^10.5 || ^11.2",
-    "drupal/views_data_export": "^1.6"
+    "drupal/views_data_export": "^1.6",
+    "endroid/qr-code": "^5.0 || ^6.0"
   }
 }

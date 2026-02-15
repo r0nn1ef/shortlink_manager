@@ -1,7 +1,15 @@
 path_prefix: go
+path_length: 6
 redirect_status: 301
 available_entity_types: {}
 auto_generate_settings: {}
+expiration:
+  enabled: false
+  default_expiration_type: none
+  default_expire_days: 0
+  default_max_clicks: 0
+  default_inactive_days: 0
+  click_log_retention_days: 90
 passthrough_parameters:
   - "utm_source"
   - "utm_medium"

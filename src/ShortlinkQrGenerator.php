@@ -47,14 +47,15 @@ class ShortlinkQrGenerator {
   public function generateQrCode(ShortlinkInterface $shortlink, int $size = 300): string {
     $url = $this->getShortlinkAbsoluteUrl($shortlink);
 
-    $result = Builder::create()
-      ->writer(new PngWriter())
-      ->data($url)
-      ->encoding(new Encoding('UTF-8'))
-      ->errorCorrectionLevel(ErrorCorrectionLevel::Medium)
-      ->size($size)
-      ->margin(10)
-      ->build();
+    $builder = new Builder(
+      writer: new PngWriter(),
+      data: $url,
+      encoding: new Encoding('UTF-8'),
+      errorCorrectionLevel: ErrorCorrectionLevel::Medium,
+      size: $size,
+      margin: 10,
+    );
+    $result = $builder->build();
 
     return $result->getString();
   }

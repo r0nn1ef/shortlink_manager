@@ -14,7 +14,7 @@ dependencies:
       - rest
       - csv_serialization
 _core:
-  default_config_hash: 0CLqjgtnDQPwGmsR1wVN_99Z-NwwEAcxpGB_zJU0ScE
+  default_config_hash: ujjfqaEAXQQ1U4e9xvGXqkxgZF68Uy13j8PQzJQc75Q
 id: shortlink_manager
 label: 'Shortlink Manager'
 module: views
@@ -1665,6 +1665,162 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
+        edit_shortlink:
+          id: edit_shortlink
+          table: shortlink
+          field: edit_shortlink
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: shortlink
+          plugin_id: entity_link_edit
+          label: ''
+          exclude: true
+          alter:
+            alter_text: true
+            text: ''
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          text: Edit
+          output_url_as_text: false
+          absolute: false
+        shortlink_qr_code:
+          id: shortlink_qr_code
+          table: shortlink
+          field: shortlink_qr_code
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: shortlink
+          plugin_id: shortlink_qr_code
+          label: ''
+          exclude: true
+          alter:
+            alter_text: true
+            text: '<a href="/admin/content/shortlink/{{ id }}/qr">Download QR code</a>'
+            make_link: false
+            path: ''
+            absolute: true
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+        delete_shortlink:
+          id: delete_shortlink
+          table: shortlink
+          field: delete_shortlink
+          relationship: none
+          group_type: group
+          admin_label: ''
+          entity_type: shortlink
+          plugin_id: entity_link_delete
+          label: ''
+          exclude: true
+          alter:
+            alter_text: false
+            text: ''
+            make_link: false
+            path: ''
+            absolute: false
+            external: false
+            replace_spaces: false
+            path_case: none
+            trim_whitespace: false
+            alt: ''
+            rel: ''
+            link_class: ''
+            prefix: ''
+            suffix: ''
+            target: ''
+            nl2br: false
+            max_length: 0
+            word_boundary: true
+            ellipsis: true
+            more_link: false
+            more_link_text: ''
+            more_link_path: ''
+            strip_tags: false
+            trim: false
+            preserve_tags: ''
+            html: false
+          element_type: ''
+          element_class: ''
+          element_label_type: ''
+          element_label_class: ''
+          element_label_colon: false
+          element_wrapper_type: ''
+          element_wrapper_class: ''
+          element_default_classes: true
+          empty: ''
+          hide_empty: false
+          empty_zero: false
+          hide_alter_empty: true
+          text: Delete
+          output_url_as_text: false
+          absolute: false
         target_entity_type_1:
           id: target_entity_type_1
           table: shortlink
@@ -2121,15 +2277,14 @@ display:
           not: false
           settings:
             format: yes-no
-        operations:
-          id: operations
-          table: shortlink
-          field: operations
+        dropbutton:
+          id: dropbutton
+          table: views
+          field: dropbutton
           relationship: none
           group_type: group
           admin_label: ''
-          entity_type: shortlink
-          plugin_id: entity_operations
+          plugin_id: dropbutton
           label: Operations
           exclude: false
           alter:
@@ -2171,7 +2326,20 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          destination: false
+          destination: true
+          fields:
+            edit_shortlink: edit_shortlink
+            shortlink_qr_code: shortlink_qr_code
+            delete_shortlink: delete_shortlink
+            destination_override: '0'
+            id: '0'
+            target_entity_type_1: '0'
+            target_entity_id: '0'
+            path: '0'
+            click_count: '0'
+            last_accessed: '0'
+            utm_set: '0'
+            status: '0'
       pager:
         type: full
         options:

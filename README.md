@@ -6,6 +6,20 @@ The Shortlink Manager module provides a powerful and automated solution for crea
 
 This module is designed for developers and site builders who need a robust, flexible, and integrated way to handle shortlinks without relying on external services.
 
+## Documentation
+
+Full documentation is available in the [`docs/`](docs/) directory.
+
+| Document | Audience | Description |
+|---|---|---|
+| [Installation & Setup](docs/installation-and-setup.md) | Administrators | Requirements, install steps, and critical first-run configuration |
+| [Administrator Guide](docs/administrator-guide.md) | Administrators | Managing shortlinks, UTM sets, bulk operations, QR codes, and health monitoring |
+| [Configuration Reference](docs/configuration-reference.md) | Administrators | Every setting, permission, expiration type, and redirect behavior detail |
+| [Expiration & Analytics](docs/expiration-and-analytics.md) | Administrators | Click tracking, expiration rules, dashboard, and data retention |
+| [Drush Commands](docs/drush-commands.md) | Administrators / Developers | CLI commands with full examples and output reference |
+| [Tokens, Views & Blocks](docs/tokens-views-blocks.md) | Developers / Site Builders | Token reference, Views field plugins, block templates, and programmatic API |
+| [End-User Guide](docs/end-user-guide.md) | Editors / Marketing | Step-by-step guide to creating, sharing, and monitoring shortlinks |
+
 ## Features
 
 ### Core Shortlink Management

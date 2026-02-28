@@ -39,7 +39,7 @@ final class ShortlinkForm extends ContentEntityForm {
 
     $form['label']['widget'][0]['value']['#title'] = $this->t('Label');
 
-    $config = $this->configFactory->get('shortlink_manager.settings');
+    $config = $this->configFactory()->get('shortlink_manager.settings');
     $path_prefix = $config->get('path_prefix') ?? 'go';
 
     // Add custom path field for vanity URLs.
@@ -107,7 +107,7 @@ final class ShortlinkForm extends ContentEntityForm {
       }
     }
     else {
-      $config = $this->configFactory->get('shortlink_manager.settings');
+      $config = $this->configFactory()->get('shortlink_manager.settings');
       $current_type = $config->get('expiration.default_expiration_type') ?? 'none';
     }
 
@@ -215,7 +215,7 @@ final class ShortlinkForm extends ContentEntityForm {
     $custom_path = trim($form_state->getValue('custom_path') ?? '');
     if ($this->entity->isNew()) {
       if (!empty($custom_path)) {
-        $config = $this->configFactory->get('shortlink_manager.settings');
+        $config = $this->configFactory()->get('shortlink_manager.settings');
         $path_prefix = $config->get('path_prefix') ?? 'go';
         $this->entity->setPath($path_prefix . '/' . $custom_path);
       }

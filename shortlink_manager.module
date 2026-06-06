@@ -74,6 +74,12 @@ function shortlink_manager_token_info(): array {
       'description' => t('The first shortlink associated with this entity.'),
       'type' => 'shortlink',
     ];
+    $tokens[$entity_type_id]['shortlink-by-source'] = [
+      'name' => t('Shortlink by UTM source'),
+      'description' => t('The shortlink associated with this entity matching a specific UTM source (e.g., [node:shortlink-by-source:blog_linkedin]).'),
+      'type' => 'shortlink',
+      'dynamic' => TRUE,
+    ];
   }
 
   return [
@@ -117,7 +123,11 @@ function shortlink_manager_tokens(string $type, array $tokens, array $data, arra
   $entity_types = \Drupal::config('shortlink_manager.settings')->get('available_entity_types') ?: [];
   if (in_array($type, $entity_types) && !empty($data[$type])) {
     $entity = $data[$type];
-    $shortlink_tokens = \Drupal::token()->findWithPrefix($tokens, 'shortlink');
+    $shortlink_tokens = array_filter(
+      \Drupal::token()->findWithPrefix($tokens, 'shortlink'),
+      fn($key) => !str_starts_with($key, 'by-source'),
+      ARRAY_FILTER_USE_KEY
+    );
 
     if (!empty($shortlink_tokens)) {
       /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlink_manager */
@@ -127,6 +137,30 @@ function shortlink_manager_tokens(string $type, array $tokens, array $data, arra
       if (!empty($shortlinks)) {
         $shortlink = reset($shortlinks);
         $replacements += \Drupal::token()->generate('shortlink', $shortlink_tokens, ['shortlink' => $shortlink], $options, $bubbleable_metadata);
+      }
+    }
+  }
+
+  // Handle shortlink-by-source tokens (e.g., [node:shortlink-by-source:linkedin]).
+  if (in_array($type, $entity_types) && !empty($data[$type])) {
+    $entity = $data[$type];
+    $by_source_tokens = \Drupal::token()->findWithPrefix($tokens, 'shortlink-by-source');
+
+    if (!empty($by_source_tokens)) {
+      /** @var \Drupal\shortlink_manager\ShortlinkManager $shortlink_manager */
+      $shortlink_manager = \Drupal::service('shortlink_manager.shortlink_manager');
+      $shortlinks = $shortlink_manager->getShortlinksForEntity($entity->getEntityTypeId(), (string) $entity->id());
+
+      foreach ($by_source_tokens as $source => $source_tokens) {
+        // $source is the UTM source value (e.g., 'blog_linkedin').
+        foreach ($shortlinks as $shortlink) {
+          $utm_set = $shortlink->getUtmSet();
+          if ($utm_set && $utm_set->getUtmSource() === $source) {
+            $replacements += \Drupal::token()->generate('shortlink', [$source_tokens => $source_tokens], ['shortlink' => $shortlink], $options, $bubbleable_metadata);
+            $replacements[$source_tokens] = \Drupal\Core\Url::fromUserInput('/' . $shortlink->getPath(), ['absolute' => TRUE])->toString();
+            break;
+          }
+        }
       }
     }
   }

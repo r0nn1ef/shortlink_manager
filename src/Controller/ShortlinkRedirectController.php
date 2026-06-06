@@ -226,12 +226,23 @@ final class ShortlinkRedirectController extends ControllerBase {
     }
 
     $redirect_status = $config->get('redirect_status') ?: 301;
+    $destination_string = $destination_url->toString();
 
     if ( $destination_url->isExternal() ) {
       $response = new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
     } else {
       $response = new RedirectResponse($destination_url->toString(), (int) $redirect_status);
     }
+
+    // New: Allow other modules to alter the response object entirely.
+    // This passes the destination, the shortlink entity, and the original response.
+    $context = [
+      'shortlink' => $shortlink,
+      'destination_url' => $destination_url,
+    ];
+
+    // Invoke a hook: hook_shortlink_redirect_response_alter
+    $this->moduleHandler()->alter('shortlink_redirect_response', $response, $context);
 
     // This is the "Invisibility Cloak" for Googlebot
     $response->headers->set('X-Robots-Tag', 'noindex, nofollow');

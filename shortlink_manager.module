@@ -339,7 +339,23 @@ function shortlink_manager_entity_insert(EntityInterface $entity): void {
     }
   }
 
-  // If multiple UTM sets are configured, create a new shortlink for each.
+  // Load existing shortlinks for this entity to avoid creating duplicates if
+  // this hook fires more than once (e.g. when another module calls
+  // $entity->save() inside its own hook_entity_insert() implementation).
+  $shortlinkStorage = \Drupal::entityTypeManager()->getStorage('shortlink');
+  $existing_shortlinks = $shortlinkStorage->loadByProperties([
+    'target_entity_type' => $entity_type_id,
+    'target_entity_id' => $entity->id(),
+  ]);
+  $existing_utm_set_ids = [];
+  foreach ($existing_shortlinks as $existing) {
+    if ($existing->hasField('utm_set') && $utm_set = $existing->get('utm_set')->entity) {
+      $existing_utm_set_ids[] = $utm_set->id();
+    }
+  }
+  $utm_set_ids = array_diff($utm_set_ids, $existing_utm_set_ids);
+
+  // Create a shortlink for each UTM set not already covered.
   foreach ($utm_set_ids as $utm_set_id) {
     $shortlink = new Shortlink([], 'shortlink');
     $shortlink->set('label', t('Auto-generated for @label', ['@label' => $entity->label()]));
@@ -368,9 +384,9 @@ function shortlink_manager_entity_insert(EntityInterface $entity): void {
     }
   }
 
-  // Record that shortlinks were just created for this entity so that
-  // hook_entity_update() can skip re-creation if another module calls
-  // $entity->save() during the same hook_entity_insert() invocation.
+  // Record that this entity has been processed so hook_entity_update() can
+  // bail early if it fires in the same request due to a re-save by another
+  // module during hook_entity_insert().
   $recently_inserted = &drupal_static('shortlink_manager_recently_inserted', []);
   $recently_inserted[$entity->getEntityTypeId() . ':' . $entity->id()] = TRUE;
 

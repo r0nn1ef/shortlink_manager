@@ -368,6 +368,12 @@ function shortlink_manager_entity_insert(EntityInterface $entity): void {
     }
   }
 
+  // Record that shortlinks were just created for this entity so that
+  // hook_entity_update() can skip re-creation if another module calls
+  // $entity->save() during the same hook_entity_insert() invocation.
+  $recently_inserted = &drupal_static('shortlink_manager_recently_inserted', []);
+  $recently_inserted[$entity->getEntityTypeId() . ':' . $entity->id()] = TRUE;
+
 }
 
 function shortlink_manager_entity_delete(EntityInterface $entity): void {
@@ -385,6 +391,16 @@ function shortlink_manager_entity_update(EntityInterface $entity): void {
   // Only operate on content entities.
   if (!($entity instanceof ContentEntityBase)) {
     \Drupal::logger('shortlink_manager')->notice('Entity is not instance of ContentEntityBase.');
+    return;
+  }
+
+  // If shortlinks were just created for this entity during hook_entity_insert()
+  // in this same request, skip processing here. This prevents duplicate
+  // shortlinks when another module calls $entity->save() inside its own
+  // hook_entity_insert() implementation, which triggers hook_entity_update()
+  // before the entity query cache reflects the newly created shortlinks.
+  $recently_inserted = &drupal_static('shortlink_manager_recently_inserted', []);
+  if (isset($recently_inserted[$entity->getEntityTypeId() . ':' . $entity->id()])) {
     return;
   }
 

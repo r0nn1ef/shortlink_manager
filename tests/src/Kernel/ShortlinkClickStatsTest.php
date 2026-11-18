@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\shortlink_manager\Controller\ShortlinkRedirectController;
 use Drupal\shortlink_manager\Entity\Shortlink;
 use Drupal\shortlink_manager\ShortlinkClickTracker;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -19,6 +20,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
  *
  * @group shortlink_manager
  */
+#[Group('shortlink_manager')]
 #[RunTestsInSeparateProcesses]
 final class ShortlinkClickStatsTest extends KernelTestBase {
 

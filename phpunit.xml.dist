@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit configuration for running only this module's tests.
+
+  Assumes the module lives three levels below the Drupal web root, e.g.
+  web/modules/custom/shortlink_manager or web/modules/contrib/shortlink_manager.
+  Run from the web root:
+
+    ../vendor/bin/phpunit -c modules/custom/shortlink_manager
+
+  Kernel and functional tests need SIMPLETEST_DB; functional tests also need
+  SIMPLETEST_BASE_URL pointing at a web server for this Drupal root. Set them
+  in the environment or copy this file to phpunit.xml and edit the values.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         bootstrap="../../../core/tests/bootstrap.php"
+         colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         cacheResult="false">
+  <php>
+    <ini name="error_reporting" value="32767"/>
+    <ini name="memory_limit" value="-1"/>
+    <!-- Example: sqlite://localhost//tmp/shortlink_test.sqlite -->
+    <env name="SIMPLETEST_DB" value="" force="false"/>
+    <!-- Example: http://127.0.0.1:8888 -->
+    <env name="SIMPLETEST_BASE_URL" value="" force="false"/>
+    <env name="BROWSERTEST_OUTPUT_DIRECTORY" value="" force="false"/>
+  </php>
+  <testsuites>
+    <testsuite name="unit">
+      <directory>tests/src/Unit</directory>
+    </testsuite>
+    <testsuite name="kernel">
+      <directory>tests/src/Kernel</directory>
+    </testsuite>
+    <testsuite name="functional">
+      <directory>tests/src/Functional</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

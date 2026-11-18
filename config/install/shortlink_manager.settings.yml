@@ -10,6 +10,26 @@ expiration:
   default_max_clicks: 0
   default_inactive_days: 0
   click_log_retention_days: 90
+click_tracking:
+  bot_user_agent_patterns:
+    - facebookexternalhit
+    - LinkedInBot
+    - Twitterbot
+    - Slackbot
+    - Discordbot
+    - TelegramBot
+    - WhatsApp
+    - Mastodon/
+    - 'Bluesky Cardyb'
+    - SummalyBot
+    - 'got ('
+    - Googlebot
+    - bingbot
+    - bot
+    - crawler
+    - spider
+    - preview
+  unique_click_window_minutes: 30
 passthrough_parameters:
   - "utm_source"
   - "utm_medium"

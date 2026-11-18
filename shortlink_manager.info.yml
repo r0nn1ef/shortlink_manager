@@ -2,7 +2,7 @@ name: 'Shortlink Manager'
 type: module
 description: 'Provides a short URL system with automatic UTM tracking.'
 package: Custom
-core_version_requirement: ^10 || ^11.1
+core_version_requirement: ^10.5 || ^11.2
 dependencies:
   - drupal:views
   - token:token

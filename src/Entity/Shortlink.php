@@ -215,8 +215,10 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
       $last_accessed = $this->get('last_accessed')->value;
       $threshold = $now - ($inactive_days * 86400);
       if (empty($last_accessed)) {
-        // Never accessed: check against entity creation if available.
-        $created = $this->get('created')->value ?? NULL;
+        // Never accessed: check against entity creation if available. The
+        // entity has no "created" base field yet, so guard the lookup rather
+        // than throw for every never-clicked link with an inactivity rule.
+        $created = $this->hasField('created') ? $this->get('created')->value : NULL;
         if (!empty($created) && (int) $created < $threshold) {
           return TRUE;
         }
@@ -354,9 +356,31 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
       ])
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['human_click_count'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Human Click Count'))
+      ->setDescription(t('Number of clicks not identified as bots or link-preview crawlers.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['unique_click_count'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Unique Click Count'))
+      ->setDescription(t('Human clicks, counting repeat clicks from the same visitor within the unique-click window once.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['last_accessed'] = BaseFieldDefinition::create('timestamp')
       ->setLabel(t('Last Accessed'))
-      ->setDescription(t('When this shortlink was last accessed.'))
+      ->setDescription(t('When this shortlink was last clicked by a human (bot traffic is ignored).'))
       ->setDisplayOptions('view', [
         'label' => 'inline',
         'type' => 'timestamp',

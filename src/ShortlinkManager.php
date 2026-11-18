@@ -7,6 +7,7 @@ namespace Drupal\shortlink_manager;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Path\PathValidatorInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -53,6 +54,13 @@ class ShortlinkManager {
   protected PathValidatorInterface $pathValidator;
 
   /**
+   * The logger channel.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
+   */
+  protected LoggerChannelInterface $logger;
+
+  /**
    * Constructs a ShortlinkManager service.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -65,6 +73,8 @@ class ShortlinkManager {
    *   The path alias manager.
    * @param \Drupal\Core\Path\PathValidatorInterface $path_validator
    *   The path validator.
+   * @param \Drupal\Core\Logger\LoggerChannelInterface $logger
+   *   The shortlink_manager logger channel.
    */
   public function __construct(
     ConfigFactoryInterface $config_factory,
@@ -72,22 +82,28 @@ class ShortlinkManager {
     MessengerInterface $messenger,
     AliasManagerInterface $alias_manager,
     PathValidatorInterface $path_validator,
+    LoggerChannelInterface $logger,
   ) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
     $this->messenger = $messenger;
     $this->aliasManager = $alias_manager;
     $this->pathValidator = $path_validator;
+    $this->logger = $logger;
   }
 
   /**
    * Generates a unique shortlink path.
    *
-   * @param int $maxlength
-   *   The maximum lenght of the shortlink path to generate. Default is 28.
+   * @param int $length
+   *   The length of the random slug. Zero or less uses the configured
+   *   path_length; anything below 4 is raised to 4.
    *
    * @return string
    *   The generated shortlink path.
+   *
+   * @throws \RuntimeException
+   *   When no unused path is found after 100 attempts.
    */
   public function generateShortlinkPath(int $length = 0): string {
     $config = $this->configFactory->get('shortlink_manager.settings');
@@ -109,28 +125,25 @@ class ShortlinkManager {
     $alphabet = '123456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ-_';
     $alphabet_length = strlen($alphabet);
 
-    // Safety counter to prevent infinite loops
+    // Safety limit to prevent infinite loops.
     $max_attempts = 100;
-    $attempts = 0;
 
-    // Loop until a unique path is found.
-    do {
+    for ($attempt = 0; $attempt < $max_attempts; $attempt++) {
       $random_string = '';
       for ($i = 0; $i < $length; $i++) {
         $random_string .= $alphabet[random_int(0, $alphabet_length - 1)];
       }
       $path = $path_prefix . '/' . $random_string;
 
-      $attempts++;
-      if ($attempts >= $max_attempts) {
-        $this->logger->error('Failed to generate unique shortlink path after @attempts attempts', [
-          '@attempts' => $max_attempts,
-        ]);
-        throw new \RuntimeException('Unable to generate unique shortlink path after ' . $max_attempts . ' attempts. Please contact administrator.');
+      if (!$this->pathExists($path)) {
+        return $path;
       }
-    } while ($this->pathExists($path));
+    }
 
-    return $path;
+    $this->logger->error('Failed to generate unique shortlink path after @attempts attempts', [
+      '@attempts' => $max_attempts,
+    ]);
+    throw new \RuntimeException('Unable to generate unique shortlink path after ' . $max_attempts . ' attempts. Please contact administrator.');
   }
 
   /**
@@ -144,9 +157,8 @@ class ShortlinkManager {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function deleteEntityShortlinks(EntityInterface $entity): void {
-    $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
-    $query = $this->entityTypeManager
-      ->getStorage('shortlink')
+    $storage = $this->entityTypeManager->getStorage('shortlink');
+    $query = $storage
       ->getQuery()
       ->condition('target_entity_type', $entity->getEntityTypeId())
       ->condition('target_entity_id', $entity->id());
@@ -260,7 +272,7 @@ class ShortlinkManager {
      * given path.
      */
     $query = $storage->getQuery()
-      ->condition('id', $path)
+      ->condition('path', $path)
       ->accessCheck(FALSE)
       ->range(0, 1);
 

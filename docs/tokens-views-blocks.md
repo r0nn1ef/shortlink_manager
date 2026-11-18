@@ -10,10 +10,11 @@ Shortlink Manager registers Drupal tokens through `hook_token_info` and `hook_to
 
 ### Shortlink Tokens (direct)
 
-These tokens require a `shortlink` context object (e.g., from token-aware fields or Feeds):
+These tokens require a `shortlink` context object (e.g., from token-aware fields or Feeds). On redirect, the shortlink being followed is always provided, so they work in UTM set values and the destination override:
 
 | Token | Description |
 |---|---|
+| `[shortlink:id]` | The shortlink's numeric ID (e.g., `42`). Stable for the life of the link; use it as a GA4 `utm_id` (see below) |
 | `[shortlink:url]` | Full absolute URL of the shortlink (e.g., `https://example.com/go/xE4iqh`) |
 | `[shortlink:path]` | The stored path string (e.g., `go/xE4iqh`) |
 | `[shortlink:label]` | The shortlink's label |
@@ -25,6 +26,7 @@ For each entity type listed in **Available Entity Types** (general settings), th
 
 | Token | Description |
 |---|---|
+| `[node:shortlink:id]` | Numeric ID of the node's first shortlink |
 | `[node:shortlink:url]` | Absolute shortlink URL for the current node |
 | `[node:shortlink:path]` | Shortlink path for the current node |
 | `[node:shortlink:label]` | Label of the node's first shortlink |
@@ -51,13 +53,26 @@ content_id:[node:nid]
 
 Token values in UTM parameters are replaced at redirect time, then sanitized (lowercased, special characters replaced with underscores).
 
+Both the shortlink being followed (`[shortlink:*]`) and, for entity-targeted links, the destination entity (e.g. `[node:*]`) are available.
+
+#### GA4 campaign ID (`utm_id`)
+
+GA4 reports the `utm_id` query parameter as the **Session manual campaign ID** dimension. Add it to a UTM set as a custom parameter:
+
+```
+utm_id:[shortlink:id]
+```
+
+Every redirect then carries `utm_id=<shortlink ID>` (e.g. `utm_id=42`), so each GA4 session maps back to exactly one shortlink, even when several links share the same source, medium and campaign. In GA4, use **Session manual campaign ID** as a dimension in Explorations or reports and compare it with the shortlink's human or unique click count. The numeric ID passes through the sanitizer unchanged.
+
 #### In Destination Override
 
 ```
 /product/[node:field_product_sku]
+https://partner.example.com/landing?ref=[shortlink:id]
 ```
 
-Tokens in `destination_override` are replaced at redirect time.
+Tokens in `destination_override` are replaced at redirect time. Only `[shortlink:*]` and global tokens (e.g. `[site:name]`) are available here, since an override link has no target entity.
 
 #### Via Token Browser
 

@@ -38,8 +38,8 @@ phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install,theme src
 # Auto-fix coding standard violations
 vendor/bin/phpcbf --standard=Drupal --extensions=php,module,install,theme src/ shortlink_manager.module shortlink_manager.install
 
-# Run tests (none currently, but this is the command when added)
-vendor/bin/phpunit -c core modules/custom/shortlink_manager
+# Run tests (Unit + Kernel; from a Drupal web root, SQLite works for SIMPLETEST_DB)
+vendor/bin/phpunit -c core modules/custom/shortlink_manager/tests
 
 # Drush: check for broken shortlink destinations
 drush shortlink:check-destinations
@@ -83,7 +83,7 @@ drush shortlink:add-missing-links
 | Service ID | Class | Purpose |
 |---|---|---|
 | `shortlink_manager.shortlink_manager` | `ShortlinkManager` | Path generation (configurable length, base62 alphabet), vanity URL validation, entity shortlink lookup, shortlink deletion |
-| `shortlink_manager.click_tracker` | `ShortlinkClickTracker` | Granular click logging to `shortlink_clicks` table, analytics queries, log purging |
+| `shortlink_manager.click_tracker` | `ShortlinkClickTracker` | Click logging to `shortlink_clicks` with bot/unique classification, daily rollups to `shortlink_clicks_daily`, analytics queries, log purging |
 | `shortlink_manager.qr_generator` | `ShortlinkQrGenerator` | QR code generation (PNG) via `endroid/qr-code` library |
 | `shortlink_manager.health_checker` | `ShortlinkHealthChecker` | Broken destination detection, redirect chain detection, flag management |
 | `shortlink_manager.route_subscriber` | `ShortlinkRouteSubscriber` | Dynamic route registration based on configured path prefix |
@@ -92,7 +92,7 @@ drush shortlink:add-missing-links
 
 1. User hits `/{path_prefix}/{shortlink_path}` (default prefix: `go`)
 2. `ShortlinkRouteSubscriber` dynamically registers the route based on configured prefix
-3. `ShortlinkRedirectController` checks expiration, resolves the destination, logs click to tracking table, increments click count, merges UTM parameters, and issues an HTTP redirect (configurable: 301, 307, or 308)
+3. `ShortlinkRedirectController` checks expiration, resolves the destination (404 if the target entity is gone), merges UTM parameters (token data: the `shortlink` plus the destination entity), then logs the click and increments the counters, and issues an HTTP redirect (configurable: 301, 307, or 308)
 
 ### Hook Implementations (shortlink_manager.module)
 
@@ -101,7 +101,7 @@ drush shortlink:add-missing-links
 - `hook_entity_delete` — Cascading delete of shortlinks when target entities are removed
 - `hook_entity_update` — Syncs UTM set changes to associated shortlinks
 - `hook_form_alter` — Adds shortlink preview sidebar to entity edit forms for configured types
-- `hook_token_info` / `hook_tokens` — Exposes `[shortlink:url]`, `[shortlink:path]`, `[shortlink:label]`, `[shortlink:click-count]` tokens and chained entity tokens (e.g., `[node:shortlink:url]`)
+- `hook_token_info` / `hook_tokens` — Exposes `[shortlink:id]`, `[shortlink:url]`, `[shortlink:path]`, `[shortlink:label]`, `[shortlink:click-count]` tokens and chained entity tokens (e.g., `[node:shortlink:url]`)
 - `hook_views_data_alter` — Registers custom Views field plugins (copy button, QR code)
 - `hook_theme` — Registers shortlink block and dashboard templates
 
@@ -128,16 +128,18 @@ Registered in `drush.services.yml`, implemented in `src/Commands/ShortlinkComman
 - `shortlink:add-missing-links` (alias `sl:add-missing`) — Creates shortlinks for entities missing them
 - `shortlink:check-destinations` (alias `sl:check`) — Checks for broken/invalid destinations
 - `shortlink:check-chains` (alias `sl:chains`) — Detects redirect chains
+- `shortlink:classify-clicks` (alias `sl:classify`) — Re-applies bot/unique classification to the retained click log and rebuilds daily totals; `--recount` also resets each shortlink's human/unique counters from the log
 
 ### Database Tables
 
 - `shortlink` — Content entity base table (auto-generated from entity definition)
 - `shortlink_revision` — Revision table (defined in `hook_schema()`)
-- `shortlink_clicks` — Click event log (click_id, shortlink_id, timestamp, referrer, user_agent, ip_hash)
+- `shortlink_clicks` — Click event log (click_id, shortlink_id, timestamp, referrer, user_agent, ip_hash, is_bot, is_unique)
+- `shortlink_clicks_daily` — Daily totals per shortlink (shortlink_id, day, raw_count, human_count, unique_count), rolled up on cron before the log purge and kept indefinitely
 
 ### Update Hooks
 
-Update hooks in `shortlink_manager.install` follow the `shortlink_manager_update_1050X` naming convention (currently 10501–10511). New updates should increment from the last number.
+Update hooks in `shortlink_manager.install` follow the `shortlink_manager_update_105XX` naming convention (currently 10501–10516). Data backfills that save entities go in `shortlink_manager.post_update.php`. New updates should increment from the last number.
 
 | Hook | Description |
 |---|---|
@@ -152,6 +154,12 @@ Update hooks in `shortlink_manager.install` follow the `shortlink_manager_update
 | 10509 | Add expires_at, max_clicks, expire_if_inactive_days entity fields |
 | 10510 | Add expiration config defaults |
 | 10511 | Add has_broken_destination entity field |
+| 10512 | Add default_expiration_type config setting |
+| 10513 | Add click_tracking config (bot UA patterns, unique window) |
+| 10514 | Add is_bot/is_unique columns + index to shortlink_clicks |
+| 10515 | Create shortlink_clicks_daily table |
+| 10516 | Add human_click_count and unique_click_count entity fields |
+| post_update `classify_click_log` | Classify existing log rows, backfill human/unique counts, initial daily rollup |
 
 ## Module Dependencies
 
@@ -165,7 +173,8 @@ Update hooks in `shortlink_manager.install` follow the `shortlink_manager_update
 - When modifying the `.install` file, remember to provide update hooks (`hook_update_N`).
 - Always verify path aliases before creating a shortlink to avoid collisions with existing Drupal routes (handled by `ShortlinkManager::validateCustomPath()`).
 - The `ShortlinkRedirectController` checks expiration before redirecting and disables expired shortlinks on access.
-- Click tracking stores hashed IPs (SHA-256) for privacy. Old click data is purged by cron based on `expiration.click_log_retention_days` config (default: 90 days).
+- Click tracking stores hashed IPs (SHA-256) for privacy. Old click data is purged by cron based on `expiration.click_log_retention_days` config (default: 90 days), but never before its day has been rolled up into `shortlink_clicks_daily`.
+- `click_count` is the raw count of every request (bots, crawlers, HEAD probes included) and is kept for backward compatibility. `human_click_count` excludes bots (configurable case-insensitive UA substrings in `click_tracking.bot_user_agent_patterns`; HEAD and empty UA are always bots). `unique_click_count` counts a visitor's repeat human clicks within `click_tracking.unique_click_window_minutes` (default 30, the GA4 session timeout) once. Only human clicks update `last_accessed`. Daily rollups use the site default timezone.
 - The JSON:API module (Drupal core) auto-exposes the Shortlink content entity; granular access is handled by `ShortlinkAccessControlHandler`.
 
 ## Additional contexts

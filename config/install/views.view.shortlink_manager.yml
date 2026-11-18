@@ -464,7 +464,6 @@ display:
               past_format: '@interval ago'
               granularity: 2
               refresh: 60
-              description: ''
           group_column: value
           group_columns: {  }
           group_rows: true
@@ -528,8 +527,6 @@ display:
           type_custom_true: ''
           type_custom_false: ''
           not: false
-          settings:
-            format: yes-no
         nothing:
           id: nothing
           table: views
@@ -1482,7 +1479,6 @@ display:
               past_format: '@interval ago'
               granularity: 2
               refresh: 60
-              description: ''
           group_column: value
           group_columns: {  }
           group_rows: true
@@ -1521,17 +1517,13 @@ display:
         fields: false
         filters: false
         filter_groups: false
-      display_extenders:
-        metatag_display_extender:
-          metatags: {  }
-          tokenize: false
+      display_extenders: {  }
       path: admin/content/shortlink/export
       displays:
         page_1: page_1
         default: '0'
       filename: shortlink-export.csv
       automatic_download: true
-      store_in_public_file_directory: null
       custom_redirect_path: false
       redirect_to_display: page_1
       include_query_params: false
@@ -1600,20 +1592,6 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: value
-          type: string
-          settings:
-            link_to_entity: 0
-          group_column: value
-          group_columns: {  }
-          group_rows: true
-          delta_limit: 0
-          delta_offset: 0
-          delta_reversed: false
-          delta_first_last: false
-          multi_type: separator
-          separator: ', '
-          field_api_classes: 0
         id:
           id: id
           table: shortlink
@@ -1936,20 +1914,6 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: value
-          type: string
-          settings:
-            link_to_entity: 0
-          group_column: value
-          group_columns: {  }
-          group_rows: true
-          delta_limit: 0
-          delta_offset: 0
-          delta_reversed: false
-          delta_first_last: false
-          multi_type: separator
-          separator: ', '
-          field_api_classes: 0
         path:
           id: path
           table: shortlink
@@ -2147,7 +2111,6 @@ display:
               past_format: '@interval ago'
               granularity: 2
               refresh: 60
-              description: ''
           group_column: value
           group_columns: {  }
           group_rows: true
@@ -2208,20 +2171,6 @@ display:
           hide_empty: false
           empty_zero: false
           hide_alter_empty: true
-          click_sort_column: target_id
-          type: entity_reference_label
-          settings:
-            link: 1
-          group_column: target_id
-          group_columns: {  }
-          group_rows: true
-          delta_limit: 0
-          delta_offset: 0
-          delta_reversed: false
-          delta_first_last: false
-          multi_type: separator
-          separator: ', '
-          field_api_classes: 0
         status:
           id: status
           table: shortlink
@@ -2275,8 +2224,6 @@ display:
           type_custom_true: ''
           type_custom_false: ''
           not: false
-          settings:
-            format: yes-no
         dropbutton:
           id: dropbutton
           table: views
@@ -2366,10 +2313,7 @@ display:
         pager: false
         fields: false
       display_description: 'Provides administrative interface for shortlinks with basic filtering.'
-      display_extenders:
-        metatag_display_extender:
-          metatags: {  }
-          tokenize: false
+      display_extenders: {  }
       path: admin/content/shortlink
     cache_metadata:
       max-age: -1

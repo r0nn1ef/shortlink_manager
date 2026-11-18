@@ -6,6 +6,7 @@ namespace Drupal\shortlink_manager\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\shortlink_manager\ShortlinkClickTracker;
 
 /**
  * Configure shortlink expiration settings.
@@ -115,8 +116,31 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
     $form['click_log']['click_log_retention_days'] = [
       '#type' => 'number',
       '#title' => $this->t('Click log retention (days)'),
-      '#description' => $this->t('Number of days to keep individual click log records. Set to 0 to keep all records indefinitely.'),
+      '#description' => $this->t('Number of days to keep individual click log records. Set to 0 to keep all records indefinitely. Daily totals (raw, human and unique clicks per shortlink) are rolled up on cron before records are purged and are kept indefinitely.'),
       '#default_value' => $config->get('expiration.click_log_retention_days') ?? 90,
+      '#min' => 0,
+    ];
+
+    $form['click_tracking'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Click tracking'),
+      '#open' => TRUE,
+    ];
+
+    $patterns = $config->get('click_tracking.bot_user_agent_patterns') ?? ShortlinkClickTracker::DEFAULT_BOT_PATTERNS;
+    $form['click_tracking']['bot_user_agent_patterns'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Bot user agent patterns'),
+      '#description' => $this->t('One per line. A click whose user agent contains any of these (case-insensitive, plain text, not regex) is counted as a bot. HEAD requests and empty user agents are always bots. Bot clicks still count toward the raw click count but not the human or unique counts. After changing this, run <code>drush shortlink:classify-clicks</code> to reclassify the retained click log.'),
+      '#default_value' => implode("\n", $patterns),
+      '#rows' => 10,
+    ];
+
+    $form['click_tracking']['unique_click_window_minutes'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Unique click window (minutes)'),
+      '#description' => $this->t('Repeat human clicks on the same shortlink from the same visitor (hashed IP) count once if they come less than this many minutes after the previous one. 30 matches the GA4 session timeout. Set to 0 to count every human click as unique.'),
+      '#default_value' => $config->get('click_tracking.unique_click_window_minutes') ?? ShortlinkClickTracker::DEFAULT_UNIQUE_WINDOW_MINUTES,
       '#min' => 0,
     ];
 
@@ -134,6 +158,8 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
     $max_clicks = $expiration_type === 'max_clicks' ? (int) $form_state->getValue('default_max_clicks') : 0;
     $inactive_days = $expiration_type === 'inactive' ? (int) $form_state->getValue('default_inactive_days') : 0;
 
+    $patterns = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', (string) $form_state->getValue('bot_user_agent_patterns'))), 'strlen')));
+
     $this->config('shortlink_manager.settings')
       ->set('expiration.enabled', (bool) $form_state->getValue('enabled'))
       ->set('expiration.default_expiration_type', $expiration_type)
@@ -141,6 +167,8 @@ final class ShortlinkExpirationSettingsForm extends ConfigFormBase {
       ->set('expiration.default_max_clicks', $max_clicks)
       ->set('expiration.default_inactive_days', $inactive_days)
       ->set('expiration.click_log_retention_days', (int) $form_state->getValue('click_log_retention_days'))
+      ->set('click_tracking.bot_user_agent_patterns', $patterns)
+      ->set('click_tracking.unique_click_window_minutes', (int) $form_state->getValue('unique_click_window_minutes'))
       ->save();
 
     parent::submitForm($form, $form_state);

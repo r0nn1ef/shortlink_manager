@@ -7,6 +7,7 @@ namespace Drupal\Tests\shortlink_manager\Kernel;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\shortlink_manager\Entity\Shortlink;
 use Drupal\shortlink_manager\ShortlinkClickTracker;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
@@ -14,6 +15,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
  *
  * @group shortlink_manager
  */
+#[Group('shortlink_manager')]
 #[RunTestsInSeparateProcesses]
 final class ClickStatsUpdatePathTest extends KernelTestBase {
 

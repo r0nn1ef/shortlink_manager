@@ -229,6 +229,69 @@ The `shortlink` content entity stores a record for every shortlink created. The 
 * Configure click log retention (default: 90 days) to automatically purge old data via cron.
 * Monitor the `shortlink_clicks` table size if your shortlinks receive heavy traffic.
 
+## Testing
+
+The module ships with Unit, Kernel and Functional (BrowserTestBase) tests under `tests/src/`. They run on every push and pull request via GitHub Actions (`.github/workflows/tests.yml`) against the previous and the latest Drupal 11 minor releases.
+
+| Suite | Directory | Needs |
+|---|---|---|
+| Unit | `tests/src/Unit` | Nothing |
+| Kernel | `tests/src/Kernel` | A database (`SIMPLETEST_DB`) |
+| Functional | `tests/src/Functional` | A database and a web server serving the site (`SIMPLETEST_BASE_URL`) |
+
+What is covered:
+
+* **Path generation and validation** (`ShortlinkServiceTest`): random path format and length, uniqueness, the 100-attempt safety limit, vanity path validation, and cascading deletes when a target entity is removed.
+* **Redirects** (`ShortlinkRedirectControllerTest`, Functional `ShortlinkRedirectTest`): external, internal and entity destinations; 301/307/308 status codes; 404s for unknown, disabled or expired links; click counts and `last_accessed`; the path prefix setting; the admin listing view.
+* **UTM parameters** (`ShortlinkUtmTest`): UTM and custom parameters, value normalisation, token replacement and merging with an existing query string.
+* **Expiration** (`ShortlinkExpirationTest`): expiry by date, click limit and inactivity, on access, in `hook_cron()` and in the `shortlink_expiration` queue worker.
+* **Click statistics** (`ShortlinkClickStatsTest`, `ClickStatsUpdatePathTest`, `BotClassificationTest`): bot filtering, human/unique counts, daily rollups, purging and the update path.
+
+### Running the tests
+
+You need a Drupal 11 site built with Composer that has `drupal/core-dev` and this module's dependencies installed:
+
+```bash
+composer require --dev drupal/core-dev:^11
+composer require drupal/token drupal/views_data_export drupal/csv_serialization
+```
+
+From the web root (`web/`), run the module's suite with its own `phpunit.xml.dist`. SQLite is the simplest database:
+
+```bash
+export SIMPLETEST_DB=sqlite://localhost/$PWD/../shortlink_test.sqlite
+../vendor/bin/phpunit -c modules/custom/shortlink_manager
+```
+
+Functional tests also need the site served over HTTP. PHP's built-in server is enough (the PHP CLI needs the `gd` and `pdo_sqlite` extensions):
+
+```bash
+php -S 127.0.0.1:8888 .ht.router.php &
+export SIMPLETEST_BASE_URL=http://127.0.0.1:8888
+../vendor/bin/phpunit -c modules/custom/shortlink_manager
+```
+
+On DDEV, run the same commands inside the web container (`ddev ssh`) and use `SIMPLETEST_BASE_URL=http://localhost`.
+
+To run one suite, file or test:
+
+```bash
+../vendor/bin/phpunit -c modules/custom/shortlink_manager --testsuite kernel
+../vendor/bin/phpunit -c modules/custom/shortlink_manager modules/custom/shortlink_manager/tests/src/Kernel/ShortlinkUtmTest.php
+../vendor/bin/phpunit -c modules/custom/shortlink_manager --filter testStatusCodes
+```
+
+Core's own configuration works too: `../vendor/bin/phpunit -c core/phpunit.xml.dist modules/custom/shortlink_manager/tests`.
+
+### Adding tests
+
+* Put new tests in `tests/src/Unit`, `tests/src/Kernel` or `tests/src/Functional` under the `Drupal\Tests\shortlink_manager\<Suite>` namespace. File and class names end in `Test`.
+* Prefer Kernel tests. They are fast and can call services and controllers directly. Use a Functional test only when you need real HTTP, routing, forms or rendered pages.
+* Kernel tests that work with shortlinks should extend `ShortlinkKernelTestBase`. It installs the entity and click tables and the module settings, and provides `createShortlink()`, `reload()`, `setRequestTime()` and `follow()`, which runs a slug through the redirect controller at a fixed time.
+* Mark every test class with `#[Group('shortlink_manager')]`. Kernel and Functional classes also need `#[RunTestsInSeparateProcesses]`.
+* Use `declare(strict_types=1);` and follow the Drupal coding standards (`phpcs --standard=Drupal,DrupalPractice`).
+* When you fix a bug, add a test that fails without the fix.
+
 ## Maintainers
 
 * **Ron Ferguson** (r0nn1ef@drupalodyssey.com) - Initial creator and maintainer.

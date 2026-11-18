@@ -8,6 +8,10 @@ services:
       - '@messenger'
       - '@path_alias.manager'
       - '@path.validator'
+      - '@logger.channel.shortlink_manager'
+  logger.channel.shortlink_manager:
+    parent: logger.channel_base
+    arguments: ['shortlink_manager']
   shortlink_manager.qr_generator:
     class: Drupal\shortlink_manager\ShortlinkQrGenerator
     arguments:

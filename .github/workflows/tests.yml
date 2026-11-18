@@ -1,0 +1,83 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpunit:
+    name: Drupal ${{ matrix.drupal }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Previous Drupal 11 minor. (11.2 can no longer be installed:
+          # Composer blocks every 11.2 release over security advisories.)
+          - drupal: '11.3.*'
+            php: '8.3'
+          # Latest Drupal 11 release.
+          - drupal: '^11'
+            php: '8.4'
+    env:
+      DRUPAL_ROOT: ${{ github.workspace }}/drupal
+      SIMPLETEST_DB: sqlite://localhost/${{ github.workspace }}/drupal/test.sqlite
+      SIMPLETEST_BASE_URL: http://127.0.0.1:8888
+      BROWSERTEST_OUTPUT_DIRECTORY: ${{ github.workspace }}/drupal/web/sites/simpletest/browser_output
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: shortlink_manager
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: gd, pdo_sqlite, sqlite3, mbstring, dom, curl, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Build a Drupal site
+        run: |
+          composer create-project "drupal/recommended-project:${{ matrix.drupal }}" "$DRUPAL_ROOT" --no-interaction --no-install
+          cd "$DRUPAL_ROOT"
+          composer config --no-plugins allow-plugins.php-http/discovery true
+          composer config --no-plugins allow-plugins.tbachert/spi true
+          composer require --no-interaction --no-progress -W \
+            "drupal/core-recommended:${{ matrix.drupal }}" \
+            "drupal/core-dev:${{ matrix.drupal }}" \
+            drupal/token \
+            "drupal/views_data_export:^1.6" \
+            drupal/csv_serialization \
+            "endroid/qr-code:^5.0 || ^6.0"
+
+      - name: Install the module
+        run: |
+          mkdir -p "$DRUPAL_ROOT/web/modules/custom" "$BROWSERTEST_OUTPUT_DIRECTORY"
+          cp -r shortlink_manager "$DRUPAL_ROOT/web/modules/custom/shortlink_manager"
+
+      - name: Start the web server
+        working-directory: drupal/web
+        run: |
+          php -S 127.0.0.1:8888 .ht.router.php > /tmp/php-server.log 2>&1 &
+          sleep 2
+          curl -fsS -o /dev/null http://127.0.0.1:8888/core/install.php
+
+      - name: Run tests
+        working-directory: drupal/web
+        run: ../vendor/bin/phpunit -c modules/custom/shortlink_manager
+
+      - name: Upload browser output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-output-${{ matrix.php }}-${{ strategy.job-index }}
+          path: |
+            ${{ env.BROWSERTEST_OUTPUT_DIRECTORY }}
+            /tmp/php-server.log
+          if-no-files-found: ignore

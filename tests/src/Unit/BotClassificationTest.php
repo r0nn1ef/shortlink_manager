@@ -6,14 +6,17 @@ namespace Drupal\Tests\shortlink_manager\Unit;
 
 use Drupal\shortlink_manager\ShortlinkClickTracker;
 use Drupal\Tests\UnitTestCase;
+use PHPUnit\Framework\Attributes\CoversMethod;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests bot classification of shortlink clicks.
  *
- * @coversDefaultClass \Drupal\shortlink_manager\ShortlinkClickTracker
  * @group shortlink_manager
  */
+#[Group('shortlink_manager')]
+#[CoversMethod(ShortlinkClickTracker::class, 'matchesBot')]
 final class BotClassificationTest extends UnitTestCase {
 
   /**
@@ -43,7 +46,7 @@ final class BotClassificationTest extends UnitTestCase {
   }
 
   /**
-   * @covers ::matchesBot
+   * Tests bot matching against the default patterns.
    */
   #[DataProvider('providerMatchesBot')]
   public function testMatchesBot(string $method, ?string $user_agent, bool $expected): void {
@@ -51,7 +54,7 @@ final class BotClassificationTest extends UnitTestCase {
   }
 
   /**
-   * @covers ::matchesBot
+   * Tests that blank patterns never match.
    */
   public function testEmptyPatternsAreIgnored(): void {
     $this->assertFalse(ShortlinkClickTracker::matchesBot('GET', 'Mozilla/5.0', ['', '  ']));

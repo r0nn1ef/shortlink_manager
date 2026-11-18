@@ -215,8 +215,10 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
       $last_accessed = $this->get('last_accessed')->value;
       $threshold = $now - ($inactive_days * 86400);
       if (empty($last_accessed)) {
-        // Never accessed: check against entity creation if available.
-        $created = $this->get('created')->value ?? NULL;
+        // Never accessed: check against entity creation if available. The
+        // entity has no "created" base field yet, so guard the lookup rather
+        // than throw for every never-clicked link with an inactivity rule.
+        $created = $this->hasField('created') ? $this->get('created')->value : NULL;
         if (!empty($created) && (int) $created < $threshold) {
           return TRUE;
         }

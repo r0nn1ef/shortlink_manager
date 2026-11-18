@@ -1,14 +1,14 @@
 {
   "name": "r0nn1ef/shortlink_manager",
-  "description": "A Drupal 10 module to manage and display shortlinks for content on your site.",
+  "description": "A Drupal 10/11 module to manage and display shortlinks for content on your site.",
   "type": "drupal-module",
   "homepage": "https://github.com/r0nn1ef/shortlink_manager.git",
   "license": "GPL-2.0-or-later",
   "authors": [
     {
-      "name": "Your Name",
-      "email": "your.email@example.com",
-      "homepage": "https://www.your-website.com"
+      "name": "Ron Ferguson",
+      "homepage": "https://www.drupalodyssey.com",
+      "role": "Maintainer"
     }
   ],
   "require": {

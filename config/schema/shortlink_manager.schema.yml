@@ -116,6 +116,19 @@ shortlink_manager.settings:
         click_log_retention_days:
           type: integer
           label: 'Click log retention days'
+    click_tracking:
+      type: mapping
+      label: 'Click tracking settings'
+      mapping:
+        bot_user_agent_patterns:
+          type: sequence
+          label: 'Bot user agent patterns'
+          sequence:
+            type: string
+            label: 'Case-insensitive user agent substring'
+        unique_click_window_minutes:
+          type: integer
+          label: 'Unique click window (minutes)'
     passthrough_parameters:
       type: sequence
       label: 'Passthrough Parameters'

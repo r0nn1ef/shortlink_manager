@@ -136,13 +136,21 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
-    $current_count = (int) $shortlink->get('click_count')->value;
-    $shortlink->set('click_count', $current_count + 1);
-    $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
-    $shortlink->save();
+    // Record the click event in the tracking log and classify it.
+    $click = $this->clickTracker->recordClick((int) $shortlink->id(), $request);
 
-    // Record the click event in the tracking log.
-    $this->clickTracker->recordClick((int) $shortlink->id(), $request);
+    // click_count stays the raw count of every request (bots included) for
+    // backward compatibility. Human and unique counts exclude bots, and only
+    // human clicks update last_accessed so crawlers don't keep links "active".
+    $shortlink->set('click_count', (int) $shortlink->get('click_count')->value + 1);
+    if (!$click['is_bot']) {
+      $shortlink->set('human_click_count', (int) $shortlink->get('human_click_count')->value + 1);
+      $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
+    }
+    if ($click['is_unique']) {
+      $shortlink->set('unique_click_count', (int) $shortlink->get('unique_click_count')->value + 1);
+    }
+    $shortlink->save();
 
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {

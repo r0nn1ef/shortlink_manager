@@ -354,9 +354,31 @@ class Shortlink extends ContentEntityBase implements ShortlinkInterface {
       ])
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['human_click_count'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Human Click Count'))
+      ->setDescription(t('Number of clicks not identified as bots or link-preview crawlers.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['unique_click_count'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Unique Click Count'))
+      ->setDescription(t('Human clicks, counting repeat clicks from the same visitor within the unique-click window once.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['last_accessed'] = BaseFieldDefinition::create('timestamp')
       ->setLabel(t('Last Accessed'))
-      ->setDescription(t('When this shortlink was last accessed.'))
+      ->setDescription(t('When this shortlink was last clicked by a human (bot traffic is ignored).'))
       ->setDisplayOptions('view', [
         'label' => 'inline',
         'type' => 'timestamp',

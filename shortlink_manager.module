@@ -294,12 +294,16 @@ function shortlink_manager_cron(): void {
     }
   }
 
+  /** @var \Drupal\shortlink_manager\ShortlinkClickTracker $click_tracker */
+  $click_tracker = \Drupal::service('shortlink_manager.click_tracker');
+
+  // Roll up complete days into daily totals before anything is purged.
+  $click_tracker->rollupCompletedDays();
+
   // Purge old click log data based on retention settings.
   $retention_days = (int) ($config->get('expiration.click_log_retention_days') ?? 90);
   if ($retention_days > 0) {
     $threshold = \Drupal::time()->getRequestTime() - ($retention_days * 86400);
-    /** @var \Drupal\shortlink_manager\ShortlinkClickTracker $click_tracker */
-    $click_tracker = \Drupal::service('shortlink_manager.click_tracker');
     $purged = $click_tracker->purgeOldClicks($threshold);
     if ($purged > 0) {
       \Drupal::logger('shortlink_manager')->notice('Purged @count old click log records.', ['@count' => $purged]);

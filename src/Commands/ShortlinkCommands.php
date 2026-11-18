@@ -8,6 +8,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drush\Commands\DrushCommands;
+use Drupal\shortlink_manager\ShortlinkClickTracker;
 use Drupal\shortlink_manager\ShortlinkHealthChecker;
 use Drupal\shortlink_manager\ShortlinkManager;
 
@@ -52,6 +53,13 @@ final class ShortlinkCommands extends DrushCommands {
   protected ShortlinkHealthChecker $healthChecker;
 
   /**
+   * The click tracker service.
+   *
+   * @var \Drupal\shortlink_manager\ShortlinkClickTracker
+   */
+  protected ShortlinkClickTracker $clickTracker;
+
+  /**
    * Constructs a new ShortlinkCommands object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
@@ -64,6 +72,8 @@ final class ShortlinkCommands extends DrushCommands {
    *   The shortlink manager service.
    * @param \Drupal\shortlink_manager\ShortlinkHealthChecker $healthChecker
    *   The health checker service.
+   * @param \Drupal\shortlink_manager\ShortlinkClickTracker $clickTracker
+   *   The click tracker service.
    */
   public function __construct(
     ConfigFactoryInterface $configFactory,
@@ -71,6 +81,7 @@ final class ShortlinkCommands extends DrushCommands {
     MessengerInterface $messenger,
     ShortlinkManager $shortlinkManager,
     ShortlinkHealthChecker $healthChecker,
+    ShortlinkClickTracker $clickTracker,
   ) {
     parent::__construct();
     $this->configFactory = $configFactory;
@@ -78,6 +89,57 @@ final class ShortlinkCommands extends DrushCommands {
     $this->messenger = $messenger;
     $this->shortlinkManager = $shortlinkManager;
     $this->healthChecker = $healthChecker;
+    $this->clickTracker = $clickTracker;
+  }
+
+  /**
+   * Re-applies bot and unique classification to the retained click log.
+   *
+   * Run this after changing the bot user agent patterns or the unique-click
+   * window. Daily totals for days still fully in the click log are rebuilt.
+   *
+   * @param array $options
+   *   The command options.
+   *
+   * @command shortlink:classify-clicks
+   * @aliases sl:classify
+   * @option recount Also reset each shortlink's human and unique click counts
+   *   from the retained click log. Counts older than the log retention window
+   *   are lost, so only use this when the counters are known to be wrong.
+   * @usage shortlink:classify-clicks
+   *   Reclassify logged clicks and rebuild retained daily totals.
+   * @usage shortlink:classify-clicks --recount
+   *   Also reset the human/unique counters on each shortlink from the log.
+   */
+  public function classifyClicks(array $options = ['recount' => FALSE]): void {
+    $this->io()->note('Classifying logged clicks...');
+    $totals = $this->clickTracker->reclassifyAll();
+    $this->io()->table(
+      ['Logged clicks', 'Bots', 'Human', 'Unique'],
+      [[$totals['total'], $totals['bots'], $totals['total'] - $totals['bots'], $totals['unique']]]
+    );
+
+    $days = $this->clickTracker->rebuildRetainedDays();
+    $this->io()->success(sprintf('Rebuilt daily totals for %d days.', $days));
+
+    if (!$options['recount']) {
+      return;
+    }
+
+    $counts = $this->clickTracker->getLoggedCountsByShortlink();
+    $storage = $this->entityTypeManager->getStorage('shortlink');
+    $updated = 0;
+    foreach (array_chunk($storage->getQuery()->accessCheck(FALSE)->execute(), 50) as $ids) {
+      foreach ($storage->loadMultiple($ids) as $id => $shortlink) {
+        $shortlink->set('human_click_count', $counts[(int) $id]['human'] ?? 0);
+        $shortlink->set('unique_click_count', $counts[(int) $id]['unique'] ?? 0);
+        $shortlink->setSyncing(TRUE);
+        $shortlink->save();
+        $updated++;
+      }
+      $storage->resetCache($ids);
+    }
+    $this->io()->success(sprintf('Reset human and unique click counts on %d shortlinks.', $updated));
   }
 
   /**

@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\shortlink_manager\ShortlinkClickTracker;
 
 /**
  * Implements hook_schema().
@@ -83,16 +84,97 @@ function shortlink_manager_schema(): array {
         'not null' => FALSE,
         'description' => 'SHA-256 hashed IP address for privacy.',
       ],
-    ],
+    ] + _shortlink_manager_click_classification_fields(),
     'primary key' => ['click_id'],
     'indexes' => [
       'shortlink_id' => ['shortlink_id'],
       'timestamp' => ['timestamp'],
       'shortlink_timestamp' => ['shortlink_id', 'timestamp'],
+      'shortlink_ip_timestamp' => ['shortlink_id', 'ip_hash', 'timestamp'],
     ],
   ];
 
+  $schema['shortlink_clicks_daily'] = _shortlink_manager_clicks_daily_schema();
+
   return $schema;
+}
+
+/**
+ * Column definitions for click bot/unique classification.
+ *
+ * @return array
+ *   Schema API field definitions keyed by column name.
+ */
+function _shortlink_manager_click_classification_fields(): array {
+  return [
+    'is_bot' => [
+      'type' => 'int',
+      'size' => 'tiny',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Whether the click came from a bot, crawler, HEAD request or empty user agent.',
+    ],
+    'is_unique' => [
+      'type' => 'int',
+      'size' => 'tiny',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => 'Whether this human click starts a new visit (no human click from the same IP hash within the unique window).',
+    ],
+  ];
+}
+
+/**
+ * Schema for the daily click totals table.
+ *
+ * @return array
+ *   The Schema API table definition.
+ */
+function _shortlink_manager_clicks_daily_schema(): array {
+  return [
+    'description' => 'Daily click totals per shortlink, kept after the click log is purged.',
+    'fields' => [
+      'shortlink_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The shortlink entity ID.',
+      ],
+      'day' => [
+        'type' => 'varchar',
+        'length' => 10,
+        'not null' => TRUE,
+        'description' => 'The calendar day (Y-m-d) in the site default timezone.',
+      ],
+      'raw_count' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'All logged requests, bots included.',
+      ],
+      'human_count' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Requests not classified as bots.',
+      ],
+      'unique_count' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unique human clicks.',
+      ],
+    ],
+    'primary key' => ['shortlink_id', 'day'],
+    'indexes' => [
+      'day' => ['day'],
+    ],
+  ];
 }
 
 /**
@@ -104,6 +186,7 @@ function shortlink_manager_uninstall($is_syncing) {
   if ($entity_type) {
     $entity_update_manager->uninstallEntityType($entity_type);
   }
+  \Drupal::state()->delete('shortlink_manager.daily_rollup_last_day');
 }
 
 /**
@@ -480,4 +563,86 @@ function shortlink_manager_update_10512(): void {
     $config->set('expiration.default_expiration_type', $type);
     $config->save();
   }
+}
+
+/**
+ * Add click tracking (bot filtering and unique window) config defaults.
+ */
+function shortlink_manager_update_10513(): void {
+  $config = \Drupal::configFactory()->getEditable('shortlink_manager.settings');
+  if ($config->get('click_tracking') === NULL) {
+    $config->set('click_tracking', [
+      'bot_user_agent_patterns' => ShortlinkClickTracker::DEFAULT_BOT_PATTERNS,
+      'unique_click_window_minutes' => ShortlinkClickTracker::DEFAULT_UNIQUE_WINDOW_MINUTES,
+    ]);
+    $config->save();
+  }
+}
+
+/**
+ * Add is_bot and is_unique columns to the shortlink_clicks table.
+ */
+function shortlink_manager_update_10514(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('shortlink_clicks')) {
+    return;
+  }
+  foreach (_shortlink_manager_click_classification_fields() as $name => $spec) {
+    if (!$schema->fieldExists('shortlink_clicks', $name)) {
+      $schema->addField('shortlink_clicks', $name, $spec);
+    }
+  }
+  if (!$schema->indexExists('shortlink_clicks', 'shortlink_ip_timestamp')) {
+    $schema->addIndex('shortlink_clicks', 'shortlink_ip_timestamp', ['shortlink_id', 'ip_hash', 'timestamp'], [
+      'fields' => [
+        'shortlink_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+        'ip_hash' => ['type' => 'varchar', 'length' => 64, 'not null' => FALSE],
+        'timestamp' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      ],
+    ]);
+  }
+}
+
+/**
+ * Create the shortlink_clicks_daily table.
+ */
+function shortlink_manager_update_10515(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('shortlink_clicks_daily')) {
+    $schema->createTable('shortlink_clicks_daily', _shortlink_manager_clicks_daily_schema());
+  }
+}
+
+/**
+ * Add human_click_count and unique_click_count fields to shortlinks.
+ */
+function shortlink_manager_update_10516(): string {
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $fields = [
+    'human_click_count' => [
+      t('Human Click Count'),
+      t('Number of clicks not identified as bots or link-preview crawlers.'),
+    ],
+    'unique_click_count' => [
+      t('Unique Click Count'),
+      t('Human clicks, counting repeat clicks from the same visitor within the unique-click window once.'),
+    ],
+  ];
+  foreach ($fields as $field_name => [$label, $description]) {
+    if ($update_manager->getFieldStorageDefinition($field_name, 'shortlink')) {
+      continue;
+    }
+    $field = BaseFieldDefinition::create('integer')
+      ->setLabel($label)
+      ->setDescription($description)
+      ->setDefaultValue(0)
+      ->setDisplayOptions('view', [
+        'label' => 'inline',
+        'type' => 'number_integer',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('view', TRUE);
+    $update_manager->installFieldStorageDefinition($field_name, 'shortlink', 'shortlink_manager', $field);
+  }
+  return t('Added human and unique click count fields. Existing click log rows are classified in a post-update.')->__toString();
 }

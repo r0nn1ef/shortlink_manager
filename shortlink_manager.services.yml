@@ -16,6 +16,9 @@ services:
     class: Drupal\shortlink_manager\ShortlinkClickTracker
     arguments:
       - '@database'
+      - '@config.factory'
+      - '@datetime.time'
+      - '@state'
   shortlink_manager.health_checker:
     class: Drupal\shortlink_manager\ShortlinkHealthChecker
     arguments:

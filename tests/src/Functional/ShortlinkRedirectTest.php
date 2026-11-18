@@ -106,6 +106,23 @@ final class ShortlinkRedirectTest extends BrowserTestBase {
     $this->assertSession()->statusCodeEquals(301);
     $this->get('go/once');
     $this->assertSession()->statusCodeEquals(404);
+
+    // A link whose target entity is gone is a 404 and records no click.
+    $orphan = $this->createShortlink('go/orphan', [
+      'destination_override' => NULL,
+      'target_entity_type' => 'user',
+      'target_entity_id' => 9999,
+    ]);
+    $this->get('go/orphan');
+    $this->assertSession()->statusCodeEquals(404);
+    $orphan = $this->reload($orphan);
+    $this->assertSame(0, (int) $orphan->get('click_count')->value);
+    $this->assertSame(0, (int) $orphan->get('human_click_count')->value);
+    $this->assertEmpty($orphan->get('last_accessed')->value);
+    $logged = $this->container->get('database')->select('shortlink_clicks', 'sc')
+      ->condition('shortlink_id', $orphan->id())
+      ->countQuery()->execute()->fetchField();
+    $this->assertSame(0, (int) $logged);
   }
 
   /**

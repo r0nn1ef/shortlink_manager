@@ -92,7 +92,7 @@ drush shortlink:add-missing-links
 
 1. User hits `/{path_prefix}/{shortlink_path}` (default prefix: `go`)
 2. `ShortlinkRouteSubscriber` dynamically registers the route based on configured prefix
-3. `ShortlinkRedirectController` checks expiration, resolves the destination, logs click to tracking table, increments click count, merges UTM parameters, and issues an HTTP redirect (configurable: 301, 307, or 308)
+3. `ShortlinkRedirectController` checks expiration, resolves the destination (404 if the target entity is gone), merges UTM parameters (token data: the `shortlink` plus the destination entity), then logs the click and increments the counters, and issues an HTTP redirect (configurable: 301, 307, or 308)
 
 ### Hook Implementations (shortlink_manager.module)
 
@@ -101,7 +101,7 @@ drush shortlink:add-missing-links
 - `hook_entity_delete` — Cascading delete of shortlinks when target entities are removed
 - `hook_entity_update` — Syncs UTM set changes to associated shortlinks
 - `hook_form_alter` — Adds shortlink preview sidebar to entity edit forms for configured types
-- `hook_token_info` / `hook_tokens` — Exposes `[shortlink:url]`, `[shortlink:path]`, `[shortlink:label]`, `[shortlink:click-count]` tokens and chained entity tokens (e.g., `[node:shortlink:url]`)
+- `hook_token_info` / `hook_tokens` — Exposes `[shortlink:id]`, `[shortlink:url]`, `[shortlink:path]`, `[shortlink:label]`, `[shortlink:click-count]` tokens and chained entity tokens (e.g., `[node:shortlink:url]`)
 - `hook_views_data_alter` — Registers custom Views field plugins (copy button, QR code)
 - `hook_theme` — Registers shortlink block and dashboard templates
 

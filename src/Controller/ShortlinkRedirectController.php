@@ -136,35 +136,18 @@ final class ShortlinkRedirectController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
-    // Record the click event in the tracking log and classify it.
-    $click = $this->clickTracker->recordClick((int) $shortlink->id(), $request);
+    // Token data for the destination override and the UTM values. The
+    // shortlink itself is always available, so [shortlink:*] tokens (e.g.
+    // utm_id=[shortlink:id] for GA4) resolve on every redirect.
+    $data = ['shortlink' => $shortlink];
 
-    // click_count stays the raw count of every request (bots included) for
-    // backward compatibility. Human and unique counts exclude bots, and only
-    // human clicks update last_accessed so crawlers don't keep links "active".
-    $shortlink->set('click_count', (int) $shortlink->get('click_count')->value + 1);
-    if (!$click['is_bot']) {
-      $shortlink->set('human_click_count', (int) $shortlink->get('human_click_count')->value + 1);
-      $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
-    }
-    if ($click['is_unique']) {
-      $shortlink->set('unique_click_count', (int) $shortlink->get('unique_click_count')->value + 1);
-    }
-    $shortlink->save();
-
+    // Resolve the destination and build the full redirect URL before any
+    // click is recorded, so a request that ends in a 404 (e.g. the target
+    // entity was deleted) leaves the counters and the click log untouched.
     // If there is a destination override, use it directly.
     if (!empty($shortlink->getDestinationOverride())) {
-      $destination_url_string = $shortlink->getDestinationOverride();
+      $destination_url_string = $this->token->replace($shortlink->getDestinationOverride(), $data);
 
-      // NEW: Set up data context for token replacement (using the slug as context).
-      // We pass $slug here as the only known context if no destination entity exists.
-      $data = ['shortlink' => (object) ['slug' => $slug]];
-
-      // NEW: Process token replacement on the destination URL string.
-      // We use the injected token service.
-      $processed_destination = $this->token->replace($destination_url_string, $data);
-
-      $destination_url_string = $processed_destination;
       /*
        * If the destination override begins with "/", it is considered internal
        * to this site. Otherwise, it is considered an external URL.
@@ -180,6 +163,10 @@ final class ShortlinkRedirectController extends ControllerBase {
       $entity_type_id = $shortlink->getTargetEntityType();
       $entity_id = $shortlink->getTargetEntityId();
 
+      if (empty($entity_type_id) || empty($entity_id) || !$this->entityTypeManager->hasDefinition($entity_type_id)) {
+        throw new NotFoundHttpException();
+      }
+
       $destination_entity = $this->entityTypeManager->getStorage($entity_type_id)->load($entity_id);
 
       if (!$destination_entity) {
@@ -187,11 +174,6 @@ final class ShortlinkRedirectController extends ControllerBase {
       }
 
       $destination_url = Url::fromRoute('entity.' . $destination_entity->getEntityTypeId() . '.canonical', [$destination_entity->getEntityType()->id() => $destination_entity->id()]);
-    }
-
-    // Set up the data context for token replacement.
-    $data = [];
-    if ($destination_entity) {
       $data[$destination_entity->getEntityTypeId()] = $destination_entity;
     }
 
@@ -233,13 +215,32 @@ final class ShortlinkRedirectController extends ControllerBase {
       $destination_url->setOption('query', array_merge($existing_query, $query_params));
     }
 
-    $redirect_status = $config->get('redirect_status') ?: 301;
+    // Generate the URL string now so a failure here can't count as a click.
     $destination_string = $destination_url->toString();
 
+    // The destination resolved, so this request is a real redirect: record
+    // the click event in the tracking log and classify it.
+    $click = $this->clickTracker->recordClick((int) $shortlink->id(), $request);
+
+    // click_count stays the raw count of every request (bots included) for
+    // backward compatibility. Human and unique counts exclude bots, and only
+    // human clicks update last_accessed so crawlers don't keep links "active".
+    $shortlink->set('click_count', (int) $shortlink->get('click_count')->value + 1);
+    if (!$click['is_bot']) {
+      $shortlink->set('human_click_count', (int) $shortlink->get('human_click_count')->value + 1);
+      $shortlink->set('last_accessed', \Drupal::time()->getRequestTime());
+    }
+    if ($click['is_unique']) {
+      $shortlink->set('unique_click_count', (int) $shortlink->get('unique_click_count')->value + 1);
+    }
+    $shortlink->save();
+
+    $redirect_status = $config->get('redirect_status') ?: 301;
+
     if ( $destination_url->isExternal() ) {
-      $response = new TrustedRedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new TrustedRedirectResponse($destination_string, (int) $redirect_status);
     } else {
-      $response = new RedirectResponse($destination_url->toString(), (int) $redirect_status);
+      $response = new RedirectResponse($destination_string, (int) $redirect_status);
     }
 
     // New: Allow other modules to alter the response object entirely.

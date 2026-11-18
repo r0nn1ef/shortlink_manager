@@ -18,8 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Lowest supported Drupal 11 minor.
-          - drupal: '11.2.*'
+          # Previous Drupal 11 minor. (11.2 can no longer be installed:
+          # Composer blocks every 11.2 release over security advisories.)
+          - drupal: '11.3.*'
             php: '8.3'
           # Latest Drupal 11 release.
           - drupal: '^11'

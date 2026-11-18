@@ -231,7 +231,7 @@ The `shortlink` content entity stores a record for every shortlink created. The 
 
 ## Testing
 
-The module ships with Unit, Kernel and Functional (BrowserTestBase) tests under `tests/src/`. They run on every push and pull request via GitHub Actions (`.github/workflows/tests.yml`) against the lowest supported and the latest Drupal 11 release.
+The module ships with Unit, Kernel and Functional (BrowserTestBase) tests under `tests/src/`. They run on every push and pull request via GitHub Actions (`.github/workflows/tests.yml`) against the previous and the latest Drupal 11 minor releases.
 
 | Suite | Directory | Needs |
 |---|---|---|

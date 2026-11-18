@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\shortlink_manager\Kernel;
 
 use Drupal\Component\Serialization\Yaml;
+use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\shortlink_manager\Controller\ShortlinkRedirectController;
 use Drupal\shortlink_manager\Entity\Shortlink;
@@ -50,6 +51,15 @@ final class ShortlinkClickStatsTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
+  public function register(ContainerBuilder $container): void {
+    parent::register($container);
+    // Freeze the clock so tests control "now" on every Drupal 11 minor.
+    $container->register('datetime.time', FrozenTime::class);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('shortlink');
@@ -82,6 +92,7 @@ final class ShortlinkClickStatsTest extends KernelTestBase {
    * Builds a request at a given time and makes it the current request.
    */
   private function request(int $time, string $user_agent = self::BROWSER, string $ip = '203.0.113.5', string $method = 'GET'): Request {
+    FrozenTime::$time = $time;
     $request = Request::create('/go/abc123', $method, [], [], [], [
       'REQUEST_TIME' => $time,
       'REQUEST_TIME_FLOAT' => (float) $time,

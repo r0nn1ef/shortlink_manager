@@ -86,11 +86,14 @@ Only the configuration field for the selected method is displayed, keeping the f
 
 Provides tokens for use in other modules and content:
 
+* `[shortlink:id]` - The shortlink's numeric ID. Add `utm_id:[shortlink:id]` to a UTM set's custom parameters and GA4 reports each link as its own **Session manual campaign ID**, so GA4 sessions map 1:1 to shortlinks
 * `[shortlink:url]` - The full shortlink URL
 * `[shortlink:path]` - The shortlink path
 * `[shortlink:click-count]` - The click count
 * `[shortlink:label]` - The shortlink label
-* `[node:shortlink:url]` - Chained token to get a node's shortlink URL (works with other entity types as well)
+* `[node:shortlink:url]` - Chained token to get a node's shortlink URL (works with other entity types as well, and with every `[shortlink:*]` token, e.g. `[node:shortlink:id]`)
+
+`[shortlink:*]` tokens resolve on redirect for the link being followed, in UTM set values and in the destination override. See [Tokens, Views & Blocks](docs/tokens-views-blocks.md#ga4-campaign-id-utm_id) for the GA4 setup.
 
 ### JSON:API / REST Exposure
 
@@ -242,8 +245,8 @@ The module ships with Unit, Kernel and Functional (BrowserTestBase) tests under 
 What is covered:
 
 * **Path generation and validation** (`ShortlinkServiceTest`): random path format and length, uniqueness, the 100-attempt safety limit, vanity path validation, and cascading deletes when a target entity is removed.
-* **Redirects** (`ShortlinkRedirectControllerTest`, Functional `ShortlinkRedirectTest`): external, internal and entity destinations; 301/307/308 status codes; 404s for unknown, disabled or expired links; click counts and `last_accessed`; the path prefix setting; the admin listing view.
-* **UTM parameters** (`ShortlinkUtmTest`): UTM and custom parameters, value normalisation, token replacement and merging with an existing query string.
+* **Redirects** (`ShortlinkRedirectControllerTest`, Functional `ShortlinkRedirectTest`): external, internal and entity destinations; 301/307/308 status codes; 404s for unknown, disabled or expired links and for links whose target entity is gone (which record no click); click counts and `last_accessed`; the path prefix setting; the admin listing view.
+* **UTM parameters** (`ShortlinkUtmTest`): UTM and custom parameters, value normalisation, token replacement (including `[shortlink:id]` as a GA4 `utm_id`) and merging with an existing query string.
 * **Expiration** (`ShortlinkExpirationTest`): expiry by date, click limit and inactivity, on access, in `hook_cron()` and in the `shortlink_expiration` queue worker.
 * **Click statistics** (`ShortlinkClickStatsTest`, `ClickStatsUpdatePathTest`, `BotClassificationTest`): bot filtering, human/unique counts, daily rollups, purging and the update path.
 

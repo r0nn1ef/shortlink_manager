@@ -47,6 +47,10 @@ function shortlink_manager_token_info(): array {
 
   $tokens = [
     'shortlink' => [
+      'id' => [
+        'name' => t('ID'),
+        'description' => t('The numeric ID of the shortlink. Stable for the life of the link, so it suits a GA4 campaign ID (utm_id).'),
+      ],
       'url' => [
         'name' => t('URL'),
         'description' => t('The full absolute URL of the shortlink.'),
@@ -99,6 +103,10 @@ function shortlink_manager_tokens(string $type, array $tokens, array $data, arra
     $shortlink = $data['shortlink'];
     foreach ($tokens as $name => $original) {
       switch ($name) {
+        case 'id':
+          $replacements[$original] = (string) $shortlink->id();
+          break;
+
         case 'url':
           $path = $shortlink->getPath();
           $replacements[$original] = \Drupal\Core\Url::fromUserInput('/' . $path, ['absolute' => TRUE])->toString();

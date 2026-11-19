@@ -60,7 +60,7 @@ drush shortlink:add-missing-links
 - `shortlink_manager.links.action.yml` — Action links (Add shortlink, Bulk generate)
 - `shortlink_manager.module` — Hook implementations (cron, entity lifecycle, form_alter, tokens, views_data_alter, theme)
 - `shortlink_manager.install` — Install/update hooks (10501–10511)
-- `shortlink_manager.services.yml` — Service definitions (5 services)
+- `shortlink_manager.services.yml` — Service definitions (7 services)
 - `shortlink_manager.libraries.yml` — JS/CSS library for clipboard functionality
 - `shortlink_manager.permissions.yml` — 11 granular permissions
 - `drush.services.yml` — Drush command registration
@@ -84,6 +84,8 @@ drush shortlink:add-missing-links
 |---|---|---|
 | `shortlink_manager.shortlink_manager` | `ShortlinkManager` | Path generation (configurable length, base62 alphabet), vanity URL validation, entity shortlink lookup, shortlink deletion |
 | `shortlink_manager.click_tracker` | `ShortlinkClickTracker` | Click logging to `shortlink_clicks` with bot/unique classification, daily rollups to `shortlink_clicks_daily`, analytics queries, log purging |
+| `shortlink_manager.utm_resolver` | `ShortlinkUtmResolver` | Resolves a shortlink's UTM set into the sanitized query parameters a redirect sends (shared by the redirect controller and stats) |
+| `shortlink_manager.stats` | `ShortlinkStats` | Read-only daily stats from `shortlink_clicks_daily` with resolved UTM values and a per-`utm_source` summary |
 | `shortlink_manager.qr_generator` | `ShortlinkQrGenerator` | QR code generation (PNG) via `endroid/qr-code` library |
 | `shortlink_manager.health_checker` | `ShortlinkHealthChecker` | Broken destination detection, redirect chain detection, flag management |
 | `shortlink_manager.route_subscriber` | `ShortlinkRouteSubscriber` | Dynamic route registration based on configured path prefix |
@@ -92,7 +94,7 @@ drush shortlink:add-missing-links
 
 1. User hits `/{path_prefix}/{shortlink_path}` (default prefix: `go`)
 2. `ShortlinkRouteSubscriber` dynamically registers the route based on configured prefix
-3. `ShortlinkRedirectController` checks expiration, resolves the destination (404 if the target entity is gone), merges UTM parameters (token data: the `shortlink` plus the destination entity), then logs the click and increments the counters, and issues an HTTP redirect (configurable: 301, 307, or 308)
+3. `ShortlinkRedirectController` checks expiration, resolves the destination (404 if the target entity is gone), merges UTM parameters via `ShortlinkUtmResolver` (token data: the `shortlink` plus the destination entity), then logs the click and increments the counters, and issues an HTTP redirect (configurable: 301, 307, or 308)
 
 ### Hook Implementations (shortlink_manager.module)
 
@@ -110,6 +112,7 @@ drush shortlink:add-missing-links
 - **Block:** `ShortlinkBlock` (displays shortlinks for current page with copy buttons), `ShortlinkDashboardBlock` (analytics dashboard: total clicks, top shortlinks, recent clicks)
 - **Action:** `DeleteShortlinkAction`, `EnableShortlinkAction`, `DisableShortlinkAction` (bulk operations)
 - **QueueWorker:** `ShortlinkExpirationWorker` (processes shortlink expiration during cron)
+- **REST Resource:** `ShortlinkStatsResource` (`shortlink_stats`, `GET /api/shortlink/stats`) — daily raw/human/unique totals for a date range; ships disabled, access via `restful get shortlink_stats` and whatever auth providers the site's REST config lists
 - **Views Fields:** `ShortlinkCopyButton` (copy-to-clipboard), `ShortlinkQrCode` (QR code download link)
 
 ### Key Admin Routes

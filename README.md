@@ -99,6 +99,8 @@ Provides tokens for use in other modules and content:
 
 Shortlink entities are exposed via Drupal's JSON:API module (included in core) with a custom access control handler. Access is controlled by the module's permissions.
 
+A read-only REST resource, `GET /api/shortlink/stats`, returns daily raw, human and unique click totals per shortlink with each link's UTM values as sent, plus a per-`utm_source` summary. It ships disabled; see [Expiration & Analytics](docs/expiration-and-analytics.md#stats-rest-endpoint) to enable it.
+
 ## Requirements
 
 * **Drupal core** ^10.5 || ^11.2
@@ -224,6 +226,7 @@ Place the "Shortlink Dashboard" block to display click analytics including total
 | View shortlink dashboard | View the analytics dashboard block. |
 | View shortlink block | See the shortlink block on pages where it is placed. |
 | Use shortlinks | Access shortlinks for redirection (enabled by default). |
+| Access GET on Shortlink click statistics resource | Read the stats REST endpoint (provided by the REST module once the resource is enabled). |
 
 ## Database Considerations
 

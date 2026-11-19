@@ -23,6 +23,18 @@ services:
       - '@config.factory'
       - '@datetime.time'
       - '@state'
+  shortlink_manager.utm_resolver:
+    class: Drupal\shortlink_manager\ShortlinkUtmResolver
+    arguments:
+      - '@token'
+      - '@entity_type.manager'
+  shortlink_manager.stats:
+    class: Drupal\shortlink_manager\ShortlinkStats
+    arguments:
+      - '@database'
+      - '@entity_type.manager'
+      - '@shortlink_manager.utm_resolver'
+      - '@shortlink_manager.click_tracker'
   shortlink_manager.health_checker:
     class: Drupal\shortlink_manager\ShortlinkHealthChecker
     arguments:

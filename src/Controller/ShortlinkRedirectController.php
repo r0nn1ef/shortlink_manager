@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\Utility\Token;
 use Drupal\shortlink_manager\ShortlinkClickTracker;
+use Drupal\shortlink_manager\ShortlinkUtmResolver;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,6 +53,13 @@ final class ShortlinkRedirectController extends ControllerBase {
   protected ShortlinkClickTracker $clickTracker;
 
   /**
+   * The UTM parameter resolver.
+   *
+   * @var \Drupal\shortlink_manager\ShortlinkUtmResolver
+   */
+  protected ShortlinkUtmResolver $utmResolver;
+
+  /**
    * Constructs a new ShortlinkRedirectController object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
@@ -62,17 +70,21 @@ final class ShortlinkRedirectController extends ControllerBase {
    *   The token service.
    * @param \Drupal\shortlink_manager\ShortlinkClickTracker $clickTracker
    *   The click tracker service.
+   * @param \Drupal\shortlink_manager\ShortlinkUtmResolver $utmResolver
+   *   The UTM parameter resolver.
    */
   public function __construct(
     ConfigFactoryInterface $configFactory,
     EntityTypeManagerInterface $entityTypeManager,
     Token $token,
     ShortlinkClickTracker $clickTracker,
+    ShortlinkUtmResolver $utmResolver,
   ) {
     $this->configFactory = $configFactory;
     $this->entityTypeManager = $entityTypeManager;
     $this->token = $token;
     $this->clickTracker = $clickTracker;
+    $this->utmResolver = $utmResolver;
   }
 
   /**
@@ -83,7 +95,8 @@ final class ShortlinkRedirectController extends ControllerBase {
       $container->get('config.factory'),
       $container->get('entity_type.manager'),
       $container->get('token'),
-      $container->get('shortlink_manager.click_tracker')
+      $container->get('shortlink_manager.click_tracker'),
+      $container->get('shortlink_manager.utm_resolver')
     );
   }
 
@@ -177,38 +190,9 @@ final class ShortlinkRedirectController extends ControllerBase {
       $data[$destination_entity->getEntityTypeId()] = $destination_entity;
     }
 
-    // Check if the shortlink has an associated UTM Set and add the parameters.
+    // Add the shortlink's UTM set parameters, with tokens replaced.
     if ($shortlink->hasUtmSet()) {
-      /** @var \Drupal\shortlink_manager\UtmSetInterface $utm_set */
-      $utm_set = $shortlink->getUtmSet();
-      $query_params = is_null($utm_set) ? [] : $utm_set->getUtmParameters();
-
-      // Define a helper function (closure) to process tokens.
-      $process_token = function (string $raw_value, array $data, array $options = []) {
-        // Only run replacement if the value looks like it contains a token.
-        if (str_contains($raw_value, '[')) {
-          // Use the injected token service.
-          return $this->token->replace($raw_value, $data, $options);
-        }
-        return $raw_value;
-      };
-
-      /*
-       * Used to clean up the token replacements if needed.
-       */
-      $pattern = '/[^a-z0-9_]+/i';
-      $replacement = '_';
-      $double_underscore_pattern = '/_+/';
-      foreach ($query_params as $key => $value) {
-        if (empty($value)) {
-          continue;
-        }
-        $new_value = $process_token($value, $data);
-        $sanitized_value = preg_replace($pattern, $replacement, $new_value);
-        $sanitized_value = preg_replace($double_underscore_pattern, '_', $sanitized_value);
-        $sanitized_value = trim($sanitized_value, '_');
-        $query_params[$key] = strtolower($sanitized_value);
-      }
+      $query_params = $this->utmResolver->resolve($shortlink, $data);
 
       // Merge the new query parameters with any existing ones.
       $existing_query = $destination_url->getOption('query') ?? [];

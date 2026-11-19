@@ -405,9 +405,21 @@ class ShortlinkClickTracker {
   }
 
   /**
-   * Gets the timezone used for daily rollups.
+   * Gets the last day rolled up into shortlink_clicks_daily.
+   *
+   * @return string|null
+   *   The day as Y-m-d in the rollup timezone, or NULL before the first
+   *   rollup.
    */
-  protected function getTimezone(): \DateTimeZone {
+  public function getLastRolledUpDay(): ?string {
+    $last = $this->state->get(static::STATE_LAST_ROLLUP_DAY);
+    return $last === NULL ? NULL : $this->formatDay((int) $last);
+  }
+
+  /**
+   * Gets the timezone used for daily rollups (the site default timezone).
+   */
+  public function getTimezone(): \DateTimeZone {
     $timezone = $this->configFactory->get('system.date')->get('timezone.default') ?: 'UTC';
     return new \DateTimeZone($timezone);
   }

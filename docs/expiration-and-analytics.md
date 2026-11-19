@@ -172,6 +172,98 @@ For time-range click data on a specific shortlink, use the `ShortlinkClickTracke
 
 ---
 
+## Stats REST Endpoint
+
+`GET /api/shortlink/stats?_format=json` returns daily click totals for a date range, read from `shortlink_clicks_daily`. It's meant for reporting tools and agents that pull shortlink numbers to compare against analytics (e.g. human shortlink clicks vs GA4 sessions per platform). It is read-only and returns aggregates only: no IP hashes, user agents or referrers.
+
+### Enabling it
+
+The resource (`shortlink_stats`) ships disabled, like every REST resource. Enable it with a REST resource config that names the authentication providers your site uses, e.g. `config/sync/rest.resource.shortlink_stats.yml`:
+
+```yaml
+langcode: en
+status: true
+dependencies:
+  module:
+    - basic_auth
+    - serialization
+    - shortlink_manager
+id: shortlink_stats
+plugin_id: shortlink_stats
+granularity: resource
+configuration:
+  methods:
+    - GET
+  formats:
+    - json
+  authentication:
+    - basic_auth
+```
+
+Any authentication provider works, including a custom one (list its provider ID). Then grant **Access GET on Shortlink click statistics resource** (`restful get shortlink_stats`) to the role of the account that will call it.
+
+### Request
+
+| Parameter | Default | Description |
+|---|---|---|
+| `from` | 28 days before `to` | First day, `Y-m-d`, inclusive |
+| `to` | Yesterday | Last day, `Y-m-d`, inclusive |
+| `shortlink` | | Shortlink ID |
+| `utm_set` | | UTM set machine name |
+| `utm_source` | | Resolved `utm_source` value, as sent (e.g. `linkedin`) |
+| `target_entity_type` / `target_entity_id` | | Target entity |
+
+Days are calendar days in the site's default timezone. A range may cover at most 366 days. Malformed or reversed dates return `400`.
+
+### Response
+
+```json
+{
+  "from": "2026-10-21",
+  "to": "2026-11-17",
+  "timezone": "America/Chicago",
+  "filters": {},
+  "rolled_up_through": "2026-11-17",
+  "data_starts": "2026-08-20",
+  "rows": [
+    {
+      "day": "2026-11-17",
+      "shortlink_id": 12,
+      "path": "go/x7Kp2a",
+      "label": "Spring post",
+      "utm_set": "linkedin",
+      "target_entity_type": "node",
+      "target_entity_id": "42",
+      "utm": {
+        "utm_source": "linkedin",
+        "utm_medium": "social",
+        "utm_campaign": "spring_post",
+        "utm_term": null,
+        "utm_content": null,
+        "utm_id": "12"
+      },
+      "raw_count": 9,
+      "human_count": 4,
+      "unique_count": 3
+    }
+  ],
+  "summary": [
+    { "utm_source": "linkedin", "shortlinks": 3, "raw_count": 40, "human_count": 18, "unique_count": 15 }
+  ],
+  "totals": { "raw_count": 52, "human_count": 25, "unique_count": 21 }
+}
+```
+
+- **rows**: one per shortlink per day with clicks, ordered by day then shortlink ID.
+- **utm**: the values a redirect sends: tokens replaced against the shortlink and its target entity, then sanitized, so rows join directly to analytics data. They are resolved **when the endpoint is called**, so editing a UTM set (or a field used in a token) changes the values reported for past days too. Tokens that can't be resolved, such as a deleted target's fields, come back empty (`null`).
+- **summary**: totals per `utm_source` (`null` for links without one, including deleted shortlinks), most human clicks first.
+- **rolled_up_through**: the last day in the daily table. Today is never included, and later days wait for cron.
+- **data_starts**: the first day with daily totals. Earlier history exists only in each shortlink's lifetime `click_count`.
+
+The response is never cached.
+
+---
+
 ## CSV Export
 
 The default shortlink Views listing includes a CSV export display (provided by `views_data_export`). Use this to export shortlink data including click counts for offline analysis in spreadsheet applications.
